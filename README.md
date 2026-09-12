@@ -59,7 +59,7 @@ refresh, but it is per-device and per-browser, and clearing site data wipes it.
 Local storage is per device, so sharing a shift needs a backend. TipM8 uses a Supabase
 project (`TipM8`, ap-southeast-1) with three tables — `shifts`, `loads`, `delays`.
 
-Each device picks a role under **Live sync**, and Off is the default:
+Each device picks a role from the toggle in the page header, and Off is the default:
 
 - **Off** — the device keeps its log to itself. Behaves exactly as it did before sync.
 - **Logging** — this is the device doing the tipping. It pushes the whole shift after
