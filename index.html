@@ -7,6 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>TipM8 — COS tipping log</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter+Tight:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -29,6 +32,7 @@ header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
 .mark span{color:var(--text)}
 .sub{color:var(--muted);font-size:14px}
 .grid{display:grid;gap:0 28px}
+.grid>div{min-width:0}
 @media(min-width:900px){
   .grid{grid-template-columns:400px minmax(0,1fr);align-items:start}
   .col-a{position:sticky;top:0;padding-top:2px}
@@ -50,7 +54,7 @@ input.text::placeholder{color:var(--muted)}
 .split-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface);margin-top:18px}
 .split-bar i{display:block;height:100%}
 .split-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
-.split-list .n{font-size:13px;color:var(--muted)}
+.split-list .n{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .split-list .n::before{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--ore);margin-right:6px;vertical-align:0}
 .split-list .v{font-family:var(--serif);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums;font-variation-settings:"opsz" 144;line-height:1.1}
 .split-list .l{font-size:12px;color:var(--muted)}
@@ -60,8 +64,8 @@ input.text::placeholder{color:var(--muted)}
 .tip:disabled{background:var(--surface);color:var(--muted);border:1px dashed var(--line)}
 .tip .m{font-family:var(--mark);font-weight:700;font-size:36px;letter-spacing:-.02em;line-height:1}
 .tip .s{font-size:14px;opacity:.8;font-variant-numeric:tabular-nums}
-.tip-meta{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:var(--muted);font-size:14px}
-.tip-meta b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+.tip-meta,.meta{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:var(--muted);font-size:14px}
+.tip-meta b,.meta b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
 .link{color:var(--blue);text-decoration:underline;text-underline-offset:3px;min-height:44px;padding:0 4px}
 .link:disabled{opacity:.35;cursor:not-allowed}
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:16px 18px}
@@ -74,7 +78,7 @@ input.text::placeholder{color:var(--muted)}
 .step-c{display:flex;align-items:center;gap:4px}
 .step-c button{width:46px;height:46px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-size:24px;line-height:1}
 .step-c b{min-width:48px;text-align:center;font-family:var(--serif);font-size:28px;font-weight:500;font-variant-numeric:tabular-nums;font-variation-settings:"opsz" 144}
-.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:10px;margin-top:10px}
 .nums label{display:block;font-size:13px;color:var(--muted)}
 .nums input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:4px;font-variant-numeric:tabular-nums;min-height:44px}
 .note{color:var(--muted);font-size:13px;margin-top:8px}
@@ -95,6 +99,25 @@ td.r,th.r{text-align:right}
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 .empty{color:var(--muted);padding:14px 0}
 .foot{color:var(--muted);font-size:13px;padding-top:16px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chips button{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:0 14px;min-height:44px;font-size:14px;color:var(--muted)}
+.chips button:hover{color:var(--text);border-color:var(--muted)}
+.chips button:disabled{opacity:.35;cursor:not-allowed}
+.delay-live{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#2B1E07;border:1px solid #4C3A12;border-radius:10px;padding:12px 14px;margin-top:10px}
+.delay-live .t{font-family:var(--serif);font-size:30px;font-weight:500;font-variation-settings:"opsz" 144;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--amber);line-height:1}
+.delay-live .r{font-size:13px;color:var(--muted);margin-top:3px}
+.prog{display:flex;height:8px;border-radius:4px;background:var(--surface);overflow:hidden;margin:16px 0 8px}
+.prog i{display:block;height:100%;background:var(--blue)}
+.prog i.tgt{background:var(--line)}
+.modal{position:fixed;inset:0;z-index:20;background:rgba(5,9,13,.74);display:flex;align-items:center;justify-content:center;padding:16px}
+.chips[hidden],.delay-live[hidden],.modal[hidden]{display:none}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;width:100%;max-width:400px;max-height:88vh;overflow:auto}
+.sheet .f{margin-bottom:12px}
+.sheet label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+.sheet input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font-variant-numeric:tabular-nums;min-height:44px}
+.sheet .ore{grid-template-columns:repeat(2,1fr)}
+tr.edit td{cursor:pointer}
+tr.edit:hover td{background:var(--surface)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -133,6 +156,15 @@ td.r,th.r{text-align:right}
       <span>Since last tip <b id="sinceLast">—</b></span>
       <button class="link" id="undoBtn">Undo last tip</button>
     </div>
+    <div class="chips" id="delayChips"></div>
+    <div class="note" id="delayNote">Tap a reason to open a delay. Logging a tip closes it.</div>
+    <div class="delay-live" id="delayLive" hidden>
+      <div>
+        <div class="t" id="delayClock">00:00:00</div>
+        <div class="r" id="delayReason"></div>
+      </div>
+      <button class="btn" id="delayEnd">End delay</button>
+    </div>
   </section>
 
   <section>
@@ -140,6 +172,9 @@ td.r,th.r{text-align:right}
       <div class="stat big"><div class="v" id="cumT">0</div><div class="l">tonnes to COS</div></div>
       <div class="stat big" id="tphShiftStat"><div class="v" id="tphShift">—</div><div class="l">tph, shift average</div></div>
       <div class="stat"><div class="v" id="tph30">—</div><div class="l">tph, last 30 min</div></div>
+      <div class="stat"><div class="v" id="tphOp">—</div><div class="l">tph, delays excluded</div></div>
+      <div class="stat"><div class="v" id="util">—</div><div class="l">utilisation</div></div>
+      <div class="stat"><div class="v" id="delayTot">—</div><div class="l">delay this shift</div></div>
       <div class="stat"><div class="v" id="loads">0</div><div class="l">loads</div></div>
       <div class="stat"><div class="v" id="avgInt">—</div><div class="l">average between loads</div></div>
       <div class="stat"><div class="v" id="targetInt">—</div><div class="l">target between loads</div></div>
@@ -148,6 +183,11 @@ td.r,th.r{text-align:right}
       <div class="stat"><div class="v" id="perTruck">—</div><div class="l">t/h per truck</div></div>
       <div class="stat"><div class="v" id="perExc">—</div><div class="l">t/h per excavator</div></div>
       <div class="stat"><div class="v" id="perLdr">—</div><div class="l">t/h per loader</div></div>
+    </div>
+    <div class="prog" id="shiftProg"></div>
+    <div class="meta">
+      <span id="projNote">—</span>
+      <span><b id="paceNote"></b></span>
     </div>
     <div class="split-bar" id="splitBar"></div>
     <div class="split-list" id="splitList"></div>
@@ -162,6 +202,7 @@ td.r,th.r{text-align:right}
       <div><label for="payload">Truck payload, t</label><input id="payload" type="number" inputmode="decimal" step="0.5" min="1"></div>
       <div><label for="fill">Fill factor</label><input id="fill" type="number" inputmode="decimal" step="0.01" min="0.1" max="1.5"></div>
       <div><label for="targetTph">Target tph</label><input id="targetTph" type="number" inputmode="numeric" step="10" min="0" placeholder="optional"></div>
+      <div><label for="shiftHours">Shift hours</label><input id="shiftHours" type="number" inputmode="decimal" step="0.5" min="1" max="24"></div>
     </div>
     <div class="note">Fleet counts are stamped on each tip, so trends can be read against what was running.</div>
   </section>
@@ -179,7 +220,7 @@ td.r,th.r{text-align:right}
     <div class="chart">
       <h3>Cumulative tonnes</h3>
       <div id="c-cum"></div>
-      <div class="legend"><span><i style="background:var(--blue)"></i>tonnes to COS</span><span><i class="tgt"></i>target pace</span></div>
+      <div class="legend"><span><i style="background:var(--blue)"></i>tonnes to COS</span><span><i class="tgt"></i>target pace</span><span><i class="bar" style="background:var(--amber);opacity:.35"></i>delay</span></div>
     </div>
     <div class="chart">
       <h3>Minutes between loads</h3>
@@ -198,6 +239,20 @@ td.r,th.r{text-align:right}
     </div>
     <div class="actions">
       <button class="btn" id="csvBtn">Export CSV</button>
+      <button class="btn" id="backupBtn">Backup JSON</button>
+      <button class="btn" id="restoreBtn">Restore JSON</button>
+      <input id="restoreFile" type="file" accept="application/json,.json" hidden>
+    </div>
+    <div class="note">Tap a row to correct its time, tonnes or ore source.</div>
+  </section>
+
+  <section>
+    <h2>Delay log</h2>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>#</th><th>Reason</th><th>From</th><th>To</th><th class="r">Length</th><th class="r">t forgone</th><th></th></tr></thead>
+      <tbody id="delayBody"></tbody>
+    </table>
     </div>
   </section>
 
@@ -209,7 +264,7 @@ td.r,th.r{text-align:right}
     </div>
     <div class="tbl">
     <table>
-      <thead><tr><th>Shift</th><th>Date</th><th class="r">Hours</th><th class="r">Loads</th><th class="r">Tonnes</th><th class="r">tph</th><th>Ore split</th><th>Trk/Exc/Ldr</th></tr></thead>
+      <thead><tr><th>Shift</th><th>Date</th><th class="r">Hours</th><th class="r">Loads</th><th class="r">Tonnes</th><th class="r">tph</th><th class="r">tph op.</th><th class="r">Delay</th><th>Ore split</th><th>Trk/Exc/Ldr</th></tr></thead>
       <tbody id="histBody"></tbody>
     </table>
     </div>
@@ -221,6 +276,20 @@ td.r,th.r{text-align:right}
   </div>
 
 </div>
+</div>
+
+<div class="modal" id="editModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <h2 id="editTitle">Edit load</h2>
+    <div class="f"><label for="eTime">Time logged</label><input id="eTime" type="time" step="1"></div>
+    <div class="f"><label for="eTonnes">Tonnes</label><input id="eTonnes" type="number" inputmode="decimal" step="0.1" min="0" max="1000"></div>
+    <div class="f"><label id="eOreLabel">Ore source</label><div class="ore" id="eOre" role="group" aria-labelledby="eOreLabel"></div></div>
+    <div class="actions">
+      <button class="btn primary" id="eSave">Save</button>
+      <button class="btn" id="eCancel">Cancel</button>
+      <button class="btn danger" id="eDel">Delete load</button>
+    </div>
+  </div>
 </div>
 </div>
 
@@ -241,9 +310,10 @@ const store=(()=>{let mem={},ok=false;
 const KEY='tipm8.v1';
 const ORES=[{k:'Kopra',c:'#7DD3FF'},{k:'Toka',c:'#7EE0A6'},{k:'Marawuwung',c:'#C4A6FF'},{k:'Araren',c:'#FF8DA1'}];
 const oreColor=k=>(ORES.find(o=>o.k===k)||{c:'#8A9BAE'}).c;
-const DEF={shift:{label:'',startedAt:null,endedAt:null},fleet:{payload:30,fill:0.9,trucks:6,excavators:2,loaders:2,targetTph:0},ore:ORES[0].k,loads:[],history:[]};
+const REASONS=['No trucks','Crusher','Screen','Loader down','Blast','Weather','Shift change','Meal','Other'];
+const DEF={shift:{label:'',startedAt:null,endedAt:null},fleet:{payload:30,fill:0.9,trucks:6,excavators:2,loaders:2,targetTph:0,shiftHours:12},ore:ORES[0].k,loads:[],delays:[],history:[]};
 let S=(()=>{try{const r=store.get(KEY);if(r){const o=JSON.parse(r);
-  return{shift:{...DEF.shift,...(o.shift||{})},fleet:{...DEF.fleet,...(o.fleet||{})},ore:o.ore||DEF.ore,loads:o.loads||[],history:o.history||[]}}}catch(e){}
+  return{shift:{...DEF.shift,...(o.shift||{})},fleet:{...DEF.fleet,...(o.fleet||{})},ore:o.ore||DEF.ore,loads:o.loads||[],delays:o.delays||[],history:o.history||[]}}}catch(e){}
   return JSON.parse(JSON.stringify(DEF))})();
 const save=()=>store.set(KEY,JSON.stringify(S));
 
@@ -260,6 +330,19 @@ const fmtDate=t=>new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'
 const fmtT=v=>Math.round(v||0).toLocaleString();
 const n0=v=>(v==null||!isFinite(v))?'—':Math.round(v).toLocaleString();
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct=v=>(v==null||!isFinite(v))?'—':Math.round(v*100)+'%';
+
+/* Delays: an open delay has no t1. Spans are clipped to the shift window so a
+   delay left running past the end of a shift cannot eat more than the shift. */
+const openDelay=()=>S.delays.find(d=>!d.t1)||null;
+function delaySpans(){
+  const start=S.shift.startedAt;if(!start)return[];
+  const end=endT();
+  return S.delays.map(d=>{
+    const a=Math.max(d.t0,start), b=Math.min(d.t1||end,end);
+    return{...d,a,b,ms:Math.max(0,b-a)};
+  }).filter(d=>d.ms>0||!d.t1);
+}
 
 /* Stats */
 function stats(){
@@ -278,7 +361,19 @@ function stats(){
   const target=S.fleet.targetTph>0?tPerLoad()/S.fleet.targetTph*3600000:null;
   const sinceLast=n?Math.max(0,end-S.loads[n-1].t):null;
   const byOre={};for(const l of S.loads){const k=l.ore||'—';byOre[k]=byOre[k]||{t:0,n:0};byOre[k].t+=l.tonnes;byOre[k].n++}
-  return{n,cum,elapsed,tphShift,tph30,avgInt,lastInt,cycle,target,sinceLast,ints,byOre};
+  const spans=delaySpans();
+  const delay=spans.reduce((a,d)=>a+d.ms,0);
+  const oper=Math.max(0,elapsed-delay);
+  const tphOp=oper>=60000?cum/(oper/3600000):null;
+  const util=elapsed>0?oper/elapsed:null;
+  /* Projection runs the shift out at the operating rate, assuming no further delay. */
+  const planMs=(S.fleet.shiftHours||0)*3600000;
+  const left=planMs>0&&started&&!S.shift.endedAt?Math.max(0,planMs-elapsed):0;
+  const rate=tphOp!=null?tphOp:tphShift;
+  const proj=rate!=null&&planMs>0?cum+rate*(left/3600000):null;
+  const goal=S.fleet.targetTph>0&&planMs>0?S.fleet.targetTph*(planMs/3600000):null;
+  const needTph=goal!=null&&left>60000?Math.max(0,(goal-cum)/(left/3600000)):null;
+  return{n,cum,elapsed,tphShift,tph30,avgInt,lastInt,cycle,target,sinceLast,ints,byOre,spans,delay,oper,tphOp,util,planMs,left,proj,goal,needTph};
 }
 
 function buckets(){
@@ -304,6 +399,9 @@ function renderClock(){
   $('#cumT').textContent=fmtT(st.cum);
   $('#tphShift').textContent=n0(st.tphShift);
   $('#tph30').textContent=n0(st.tph30);
+  $('#tphOp').textContent=n0(st.tphOp);
+  $('#util').textContent=st.elapsed>0?pct(st.util):'—';
+  $('#delayTot').textContent=st.delay?fmtDur(st.delay):(S.shift.startedAt?'none':'—');
   $('#loads').textContent=st.n;
   $('#avgInt').textContent=fmtDur(st.avgInt);
   $('#lastInt').textContent=fmtDur(st.lastInt);
@@ -313,6 +411,8 @@ function renderClock(){
   $('#perTruck').textContent=per(f.trucks);
   $('#perExc').textContent=per(f.excavators);
   $('#perLdr').textContent=per(f.loaders);
+  const od=openDelay();
+  if(od)$('#delayClock').textContent=fmtClock(now()-od.t0);
   const el=$('#tphShiftStat'), tgt=f.targetTph;
   el.classList.toggle('ok',tgt>0&&st.tphShift!=null&&st.tphShift>=tgt);
   el.classList.toggle('low',tgt>0&&st.tphShift!=null&&st.tphShift<tgt);
@@ -346,6 +446,46 @@ function renderFleet(){
   if(document.activeElement!==$('#payload'))$('#payload').value=f.payload;
   if(document.activeElement!==$('#fill'))$('#fill').value=f.fill;
   if(document.activeElement!==$('#targetTph'))$('#targetTph').value=f.targetTph||'';
+  if(document.activeElement!==$('#shiftHours'))$('#shiftHours').value=f.shiftHours||'';
+}
+
+function renderDelay(){
+  const d=openDelay(), st=stats(), ended=!!S.shift.endedAt;
+  $('#delayChips').innerHTML=REASONS.map(r=>`<button type="button" data-reason="${esc(r)}">${esc(r)}</button>`).join('');
+  $$('#delayChips button').forEach(b=>b.disabled=!!d||ended);
+  $('#delayLive').hidden=!d;
+  $('#delayChips').hidden=!!d;
+  $('#delayNote').hidden=!!d;
+  if(d){
+    $('#delayClock').textContent=fmtClock(now()-d.t0);
+    $('#delayReason').textContent=esc(d.reason)+', opened '+fmtTime(d.t0);
+  }
+}
+
+function renderPace(){
+  const st=stats(), tgt=S.fleet.targetTph>0;
+  const bar=$('#shiftProg');
+  if(!S.shift.startedAt||!st.planMs){bar.innerHTML='';$('#projNote').textContent='Set shift hours to see end-of-shift pace.';$('#paceNote').textContent='';return}
+  const done=Math.min(1,st.elapsed/st.planMs);
+  bar.innerHTML=`<i style="width:${done*100}%"></i><i class="tgt" style="width:${(1-done)*100}%"></i>`;
+  const hrsLeft=st.left/3600000;
+  $('#projNote').textContent=st.proj==null?'Tracking, no rate yet.'
+    :st.left<=0?`Shift complete, ${fmtT(st.cum)} t logged`
+    :`On pace for ${fmtT(st.proj)} t, ${fmtDur(st.left)} left`;
+  const p=$('#paceNote');
+  if(!tgt||st.goal==null||st.left<=0){p.textContent='';p.style.color='';return}
+  const gap=st.proj!=null?st.proj-st.goal:null;
+  p.textContent=st.needTph==null?'':`${n0(st.needTph)} tph needed`;
+  p.style.color=gap==null?'':gap>=0?'var(--green)':'var(--amber)';
+}
+
+function renderDelayLog(){
+  const tb=$('#delayBody'), st=stats(), rate=st.tphOp;
+  if(!st.spans.length){tb.innerHTML='<tr><td colspan="7" class="empty">No delays logged this shift.</td></tr>';return}
+  tb.innerHTML=st.spans.map((d,i)=>({d,i})).reverse().map(({d,i})=>{
+    const lost=rate!=null?rate*d.ms/3600000:null;
+    return `<tr><td>${i+1}</td><td><span style="color:var(--amber)">${esc(d.reason)}</span></td><td>${fmtTime(d.a)}</td><td>${d.t1?fmtTime(d.b):'open'}</td><td class="r">${fmtDur(d.ms)}</td><td class="r">${lost==null?'—':fmtT(lost)}</td><td><button class="x" data-ddel="${i}" aria-label="Delete delay ${i+1}">×</button></td></tr>`;
+  }).join('');
 }
 
 /* Charts (plain SVG, no dependencies) */
@@ -392,6 +532,7 @@ function renderCum(){
   const stepMs=span<=2*3600000?30*60000:span<=6*3600000?3600000:2*3600000;
   const d0=new Date(start);d0.setMinutes(0,0,0);
   for(let t=d0.getTime();t<=end;t+=stepMs){if(t<start)continue;s+=`<text x="${xOf(t)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtHM(t)}</text>`}
+  for(const d of stats().spans){const x0=xOf(Math.max(d.a,start)),x1=xOf(Math.min(d.b,end));if(x1-x0>0.5)s+=`<rect x="${x0.toFixed(1)}" y="${PT}" width="${(x1-x0).toFixed(1)}" height="${IH}" fill="var(--amber)" opacity=".10"><title>${esc(d.reason)}, ${fmtDur(d.ms)}</title></rect>`}
   const path=pts.map((p,i)=>(i?'L':'M')+xOf(p[0]).toFixed(1)+' '+yOf(p[1],max).toFixed(1)).join(' ');
   s+=`<path d="${path} L${xOf(end).toFixed(1)} ${PT+IH} L${PL} ${PT+IH} Z" fill="var(--blue)" opacity=".12"/>`;
   s+=`<path d="${path}" fill="none" stroke="var(--blue)" stroke-width="2"/>`;
@@ -420,7 +561,7 @@ function renderInt(){
 
 function renderHist(){
   const el=$('#c-hist'), tb=$('#histBody'), h=S.history.slice(-12);
-  if(!S.history.length){el.innerHTML=emptyMsg('Finished shifts land here for shift-on-shift trends.');tb.innerHTML='';return}
+  if(!S.history.length){el.innerHTML=emptyMsg('Finished shifts land here for shift-on-shift trends.');tb.innerHTML='<tr><td colspan="9" class="empty">No finished shifts yet.</td></tr>';return}
   const {max,step}=niceMax(Math.max(...h.map(x=>x.tph||0)));
   let s=svgOpen()+yGrid(max,step,v=>Math.round(v));
   const bw=IW/h.length, gap=Math.min(10,bw*0.25);
@@ -430,7 +571,7 @@ function renderHist(){
     s+=`<text x="${X+(bw-gap)/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc((x.label||fmtDate(x.startedAt)).slice(0,10))}</text>`;
   });
   el.innerHTML=s+'</svg>';
-  tb.innerHTML=S.history.slice().reverse().map(x=>`<tr><td>${esc(x.label||'—')}</td><td>${fmtDate(x.startedAt)}</td><td class="r">${((x.endedAt-x.startedAt)/3600000).toFixed(1)}</td><td class="r">${x.loads}</td><td class="r">${fmtT(x.tonnes)}</td><td class="r">${n0(x.tph)}</td><td>${x.byOre?ORES.filter(o=>x.byOre[o.k]).map(o=>o.k[0]+' '+fmtT(x.byOre[o.k])).join(' / '):'—'}</td><td>${x.trucks}/${x.exc}/${x.ldr}</td></tr>`).join('');
+  tb.innerHTML=S.history.slice().reverse().map(x=>`<tr><td>${esc(x.label||'—')}</td><td>${fmtDate(x.startedAt)}</td><td class="r">${((x.endedAt-x.startedAt)/3600000).toFixed(1)}</td><td class="r">${x.loads}</td><td class="r">${fmtT(x.tonnes)}</td><td class="r">${n0(x.tph)}</td><td class="r">${n0(x.tphOp)}</td><td class="r">${x.delay?fmtDur(x.delay):'—'}</td><td>${x.byOre?ORES.filter(o=>x.byOre[o.k]).map(o=>o.k[0]+' '+fmtT(x.byOre[o.k])).join(' / '):'—'}</td><td>${x.trucks}/${x.exc}/${x.ldr}</td></tr>`).join('');
 }
 
 function renderLog(){
@@ -438,12 +579,12 @@ function renderLog(){
   if(!S.loads.length){tb.innerHTML='<tr><td colspan="8" class="empty">No loads logged this shift.</td></tr>';return}
   let cum=0;
   const rows=S.loads.map((l,i)=>{cum+=l.tonnes;return{i,l,cum,int:i?l.t-S.loads[i-1].t:null}}).reverse();
-  tb.innerHTML=rows.map(r=>`<tr><td>${r.i+1}</td><td>${fmtTime(r.l.t)}</td><td><span style="color:${oreColor(r.l.ore)}">${esc(r.l.ore||'—')}</span></td><td class="r">${r.l.tonnes.toFixed(1)}</td><td class="r">${fmtDur(r.int)}</td><td class="r">${fmtT(r.cum)}</td><td>${r.l.trucks}/${r.l.exc}/${r.l.ldr}</td><td><button class="x" data-del="${r.i}" aria-label="Delete load ${r.i+1}">×</button></td></tr>`).join('');
+  tb.innerHTML=rows.map(r=>`<tr class="edit" data-edit="${r.i}"><td>${r.i+1}</td><td>${fmtTime(r.l.t)}</td><td><span style="color:${oreColor(r.l.ore)}">${esc(r.l.ore||'—')}</span></td><td class="r">${r.l.tonnes.toFixed(1)}</td><td class="r">${fmtDur(r.int)}</td><td class="r">${fmtT(r.cum)}</td><td>${r.l.trucks}/${r.l.exc}/${r.l.ldr}</td><td><button class="x" data-del="${r.i}" aria-label="Delete load ${r.i+1}">×</button></td></tr>`).join('');
 }
 
 let lastChart=0;
 function renderCharts(){renderTph();renderCum();renderInt();lastChart=now()}
-function renderAll(){renderShiftControls();renderOre();renderFleet();renderClock();renderSplit();renderCharts();renderLog();renderHist()}
+function renderAll(){renderShiftControls();renderOre();renderFleet();renderDelay();renderClock();renderPace();renderSplit();renderCharts();renderLog();renderDelayLog();renderHist()}
 
 /* Actions */
 let locked=false, flashTimer=null;
@@ -452,6 +593,7 @@ function tip(){
   locked=true;
   const t=now();
   if(!S.shift.startedAt)S.shift.startedAt=t;
+  const od=openDelay();if(od)od.t1=t;
   S.loads.push({t,ore:S.ore,tonnes:tPerLoad(),trucks:S.fleet.trucks,exc:S.fleet.excavators,ldr:S.fleet.loaders});
   save();
   if(navigator.vibrate)navigator.vibrate(40);
@@ -463,32 +605,115 @@ function tip(){
   flashTimer=setTimeout(()=>{b.classList.remove('logged');locked=false;renderShiftControls()},1500);
   renderAll();
 }
+function startDelay(reason){
+  if(S.shift.endedAt||openDelay())return;
+  const t=now();
+  if(!S.shift.startedAt)S.shift.startedAt=t;
+  S.delays.push({t0:t,t1:null,reason});
+  save();renderAll();
+}
+function endDelay(){const d=openDelay();if(!d)return;d.t1=now();save();renderAll()}
+function delDelay(i){
+  const sp=stats().spans[i];if(!sp)return;
+  if(!confirm('Delete the '+sp.reason+' delay opened at '+fmtTime(sp.a)+'?'))return;
+  const j=S.delays.findIndex(x=>x.t0===sp.t0&&x.reason===sp.reason);
+  if(j>-1)S.delays.splice(j,1);
+  save();renderAll();
+}
+
 function startShift(){if(S.shift.startedAt)return;S.shift.startedAt=now();save();renderAll()}
-function endShift(){if(!S.shift.startedAt||S.shift.endedAt)return;if(!confirm('End this shift? Tipping stops until you start a new one.'))return;S.shift.endedAt=now();save();renderAll()}
+function endShift(){if(!S.shift.startedAt||S.shift.endedAt)return;if(!confirm('End this shift? Tipping stops until you start a new one.'))return;const t=now();const od=openDelay();if(od)od.t1=t;S.shift.endedAt=t;save();renderAll()}
 function newShift(){
   const st=stats();
   if(S.loads.length){
     const last=S.loads[S.loads.length-1];
-    S.history.push({id:S.shift.startedAt,label:S.shift.label||'',startedAt:S.shift.startedAt,endedAt:endT(),loads:st.n,tonnes:Math.round(st.cum*10)/10,tph:st.tphShift,byOre:Object.fromEntries(Object.entries(st.byOre).map(([k,v])=>[k,Math.round(v.t*10)/10])),trucks:last.trucks,exc:last.exc,ldr:last.ldr});
+    S.history.push({id:S.shift.startedAt,label:S.shift.label||'',startedAt:S.shift.startedAt,endedAt:endT(),loads:st.n,tonnes:Math.round(st.cum*10)/10,tph:st.tphShift,tphOp:st.tphOp,delay:st.delay,byOre:Object.fromEntries(Object.entries(st.byOre).map(([k,v])=>[k,Math.round(v.t*10)/10])),trucks:last.trucks,exc:last.exc,ldr:last.ldr});
     if(S.history.length>60)S.history=S.history.slice(-60);
   }
   S.shift={label:'',startedAt:null,endedAt:null};
   S.loads=[];
+  S.delays=[];
   save();renderAll();
 }
 function undo(){if(!S.loads.length||S.shift.endedAt)return;S.loads.pop();save();renderAll()}
 function del(i){if(!confirm('Delete load '+(i+1)+'?'))return;S.loads.splice(i,1);save();renderAll()}
+/* Edit sheet: correct a mis-tapped time, tonnage or ore source. */
+let editIx=null, editOre=null;
+const modalOpen=()=>!$('#editModal').hidden;
+function openEdit(i){
+  const l=S.loads[i];if(!l||S.shift.endedAt)return;
+  editIx=i;editOre=l.ore||ORES[0].k;
+  const d=new Date(l.t);
+  $('#eTime').value=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+  $('#eTonnes').value=l.tonnes;
+  $('#editTitle').textContent='Edit load '+(i+1);
+  renderEditOre();
+  $('#editModal').hidden=false;
+  $('#eTime').focus();
+}
+function renderEditOre(){
+  $('#eOre').innerHTML=ORES.map(o=>`<button type="button" data-eore="${o.k}" style="--ore:${o.c}" aria-pressed="${editOre===o.k}">${o.k}</button>`).join('');
+}
+function closeEdit(){$('#editModal').hidden=true;editIx=null}
+function saveEdit(){
+  const l=S.loads[editIx];if(!l)return closeEdit();
+  const parts=($('#eTime').value||'').split(':').map(Number);
+  if(parts.length>=2&&parts.every(v=>isFinite(v))){
+    const d=new Date(l.t);d.setHours(parts[0],parts[1],parts[2]||0,0);
+    l.t=d.getTime();
+  }
+  const tn=parseFloat($('#eTonnes').value);
+  if(isFinite(tn)&&tn>=0)l.tonnes=Math.round(tn*100)/100;
+  l.ore=editOre;
+  S.loads.sort((a,b)=>a.t-b.t);
+  if(S.shift.startedAt&&S.loads.length)S.shift.startedAt=Math.min(S.shift.startedAt,S.loads[0].t);
+  closeEdit();save();renderAll();
+}
+
 function exportCsv(){
   const label=S.shift.label||'shift';
   const rows=[['shift','load','timestamp_iso','time','ore','tonnes','interval_s','cumulative_t','trucks','excavators','loaders']];
   let cum=0;
   S.loads.forEach((l,i)=>{cum+=l.tonnes;rows.push([label,i+1,new Date(l.t).toISOString(),fmtTime(l.t),l.ore||'',l.tonnes,i?Math.round((l.t-S.loads[i-1].t)/1000):'',Math.round(cum*10)/10,l.trucks,l.exc,l.ldr])});
+  const st=stats();
+  if(st.spans.length){
+    rows.push([]);
+    rows.push(['shift','delay','from_iso','from','reason','length_s','','','','','']);
+    st.spans.forEach((d,i)=>rows.push([label,i+1,new Date(d.a).toISOString(),fmtTime(d.a),d.reason,Math.round(d.ms/1000),'','','','','']));
+  }
+  rows.push([]);
+  rows.push(['summary','elapsed_s','delay_s','operating_s','tonnes','tph_elapsed','tph_operating','utilisation','','','']);
+  rows.push([label,Math.round(st.elapsed/1000),Math.round(st.delay/1000),Math.round(st.oper/1000),Math.round(st.cum*10)/10,st.tphShift==null?'':Math.round(st.tphShift),st.tphOp==null?'':Math.round(st.tphOp),st.util==null?'':Math.round(st.util*100)/100,'','','']);
   const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download='tipm8-'+label.replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')+'-'+new Date().toISOString().slice(0,10)+'.csv';
   document.body.appendChild(a);a.click();a.remove();
 }
+function download(name,text,type){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([text],{type}));
+  a.download=name;
+  document.body.appendChild(a);a.click();a.remove();
+}
+function backup(){
+  const stamp=new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+  download('tipm8-backup-'+stamp+'.json',JSON.stringify({app:'tipm8',v:1,exportedAt:new Date().toISOString(),data:S},null,2),'application/json');
+}
+function restore(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    let o;try{o=JSON.parse(r.result)}catch(e){return alert('That file is not valid JSON.')}
+    const d=o&&o.data&&typeof o.data==='object'?o.data:o;
+    if(!d||!Array.isArray(d.loads)||!Array.isArray(d.history))return alert('That does not look like a TipM8 backup.');
+    if(!confirm(`Replace everything on this device with this backup? It holds ${d.loads.length} load${d.loads.length===1?'':'s'} in the current shift and ${d.history.length} finished shift${d.history.length===1?'':'s'}.`))return;
+    S={shift:{...DEF.shift,...(d.shift||{})},fleet:{...DEF.fleet,...(d.fleet||{})},ore:d.ore||DEF.ore,loads:d.loads,delays:d.delays||[],history:d.history};
+    save();renderAll();
+  };
+  r.onerror=()=>alert('Could not read that file.');
+  r.readAsText(file);
+}
+
 function clearAll(){if(!confirm('Clear the current shift, fleet settings and all previous shifts on this device?'))return;S=JSON.parse(JSON.stringify(DEF));save();renderAll()}
 
 /* Wiring */
@@ -498,11 +723,28 @@ $('#endBtn').addEventListener('click',endShift);
 $('#newBtn').addEventListener('click',newShift);
 $('#undoBtn').addEventListener('click',undo);
 $('#csvBtn').addEventListener('click',exportCsv);
+$('#backupBtn').addEventListener('click',backup);
+$('#restoreBtn').addEventListener('click',()=>$('#restoreFile').click());
+$('#restoreFile').addEventListener('change',e=>{const f=e.target.files[0];if(f)restore(f);e.target.value=''});
+$('#delayEnd').addEventListener('click',endDelay);
+$('#delayChips').addEventListener('click',e=>{const b=e.target.closest('[data-reason]');if(b)startDelay(b.dataset.reason)});
+$('#delayBody').addEventListener('click',e=>{const b=e.target.closest('[data-ddel]');if(b)delDelay(+b.dataset.ddel)});
 $('#clearBtn').addEventListener('click',clearAll);
 $('#shiftLabel').addEventListener('input',e=>{S.shift.label=e.target.value.trim();save()});
 $('#oreSel').addEventListener('click',e=>{const b=e.target.closest('[data-ore]');if(!b)return;S.ore=b.dataset.ore;save();renderOre();renderShiftControls()});
-document.addEventListener('keydown',e=>{const i=['1','2','3','4'].indexOf(e.key);if(i>-1&&!/INPUT/.test(document.activeElement.tagName)){S.ore=ORES[i].k;save();renderOre();renderShiftControls()}});
-$('#logBody').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(b)del(+b.dataset.del)});
+document.addEventListener('keydown',e=>{const i=['1','2','3','4'].indexOf(e.key);if(i>-1&&!modalOpen()&&!/INPUT/.test(document.activeElement.tagName)){S.ore=ORES[i].k;save();renderOre();renderShiftControls()}});
+$('#logBody').addEventListener('click',e=>{
+  const d=e.target.closest('[data-del]');
+  if(d)return del(+d.dataset.del);
+  const r=e.target.closest('[data-edit]');
+  if(r)openEdit(+r.dataset.edit);
+});
+$('#eSave').addEventListener('click',saveEdit);
+$('#eCancel').addEventListener('click',closeEdit);
+$('#eDel').addEventListener('click',()=>{const i=editIx;closeEdit();del(i)});
+$('#eOre').addEventListener('click',e=>{const b=e.target.closest('[data-eore]');if(!b)return;editOre=b.dataset.eore;renderEditOre()});
+$('#editModal').addEventListener('click',e=>{if(e.target===$('#editModal'))closeEdit()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modalOpen())closeEdit()});
 $$('.step-c button').forEach(b=>b.addEventListener('click',()=>{
   const k=b.dataset.k, d=+b.dataset.d;
   S.fleet[k]=Math.max(0,Math.min(99,(S.fleet[k]||0)+d));
@@ -512,17 +754,20 @@ const numIn=(id,k,min,max)=>$('#'+id).addEventListener('change',e=>{
   let v=parseFloat(e.target.value);
   if(!isFinite(v))v=k==='targetTph'?0:DEF.fleet[k];
   S.fleet[k]=Math.max(min,Math.min(max,v));
-  save();renderFleet();renderClock();renderShiftControls();renderCharts();
+  save();renderFleet();renderClock();renderPace();renderShiftControls();renderCharts();renderDelayLog();
 });
 numIn('payload','payload',1,500);
 numIn('fill','fill',0.1,1.5);
 numIn('targetTph','targetTph',0,100000);
-document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|BUTTON/.test(document.activeElement.tagName)){e.preventDefault();tip()}});
+numIn('shiftHours','shiftHours',1,24);
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&!modalOpen()&&!/INPUT|BUTTON/.test(document.activeElement.tagName)){e.preventDefault();tip()}});
 
 $('#storeNote').textContent=store.ok?'Log is saved on this device and survives a refresh.':'Browser storage is off here, so a refresh will clear the log. Export CSV before you close.';
 
 renderAll();
-setInterval(()=>{renderClock();if(now()-lastChart>60000)renderCharts()},1000);
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+setInterval(()=>{renderClock();renderPace();if(now()-lastChart>60000){renderCharts();renderDelayLog()}},1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)renderAll()});
 })();
 </script>
