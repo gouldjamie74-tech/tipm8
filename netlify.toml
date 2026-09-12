@@ -1,0 +1,8 @@
+# TipM8 — static site, no build step
+[build]
+  publish = "."
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-cache"

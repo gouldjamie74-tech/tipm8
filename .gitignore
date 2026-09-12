@@ -1,0 +1,11 @@
+# Local build/deploy scratch
+.netlify/
+node_modules/
+
+# Source archive — the unpacked files are the source of truth
+*.zip
+
+# OS / editor
+Thumbs.db
+.DS_Store
+.vscode/

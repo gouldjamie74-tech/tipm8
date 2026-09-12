@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E141B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>TipM8 — COS tipping log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter+Tight:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E141B; --surface:#151D26; --line:#243040; --text:#E8EEF4; --muted:#8A9BAE;
+  --blue:#7DD3FF; --amber:#F5B335; --amber-ink:#1A1200; --red:#FF6B6B; --green:#7EE0A6;
+  --sans:"Inter Tight",system-ui,-apple-system,sans-serif;
+  --serif:"Fraunces",Georgia,serif;
+  --mark:"Space Grotesk",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.4;-webkit-text-size-adjust:100%}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.app{max-width:1180px;margin:0 auto;padding:14px 16px calc(28px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:6px 0 12px;border-bottom:1px solid var(--line)}
+.mark{font-family:var(--mark);font-weight:700;font-size:26px;letter-spacing:-.03em;color:var(--blue)}
+.mark span{color:var(--text)}
+.sub{color:var(--muted);font-size:14px}
+.grid{display:grid;gap:0 28px}
+@media(min-width:900px){
+  .grid{grid-template-columns:400px minmax(0,1fr);align-items:start}
+  .col-a{position:sticky;top:0;padding-top:2px}
+}
+section{padding:16px 0;border-bottom:1px solid var(--line)}
+h2{font-family:var(--serif);font-weight:500;font-size:20px;margin:0 0 10px;letter-spacing:-.01em;font-variation-settings:"opsz" 48}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input.text{flex:1;min-width:160px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+input.text::placeholder{color:var(--muted)}
+.clock{display:flex;align-items:baseline;gap:12px;margin:12px 0 10px;flex-wrap:wrap}
+.clock .t{font-family:var(--serif);font-size:40px;font-weight:500;font-variation-settings:"opsz" 144;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-weight:500;min-height:44px}
+.btn.primary{background:var(--blue);color:#06212E;border-color:var(--blue)}
+.btn.danger{color:var(--red);border-color:#4A2A2A}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.ore{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.ore button{min-height:48px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-weight:500;font-size:14px;padding:0 4px;color:var(--muted)}
+.ore button[aria-pressed="true"]{color:var(--ore);border-color:var(--ore);box-shadow:inset 0 0 0 1px var(--ore)}
+.split-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface);margin-top:18px}
+.split-bar i{display:block;height:100%}
+.split-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.split-list .n{font-size:13px;color:var(--muted)}
+.split-list .n::before{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--ore);margin-right:6px;vertical-align:0}
+.split-list .v{font-family:var(--serif);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums;font-variation-settings:"opsz" 144;line-height:1.1}
+.split-list .l{font-size:12px;color:var(--muted)}
+.tip{width:100%;min-height:140px;border-radius:14px;background:var(--amber);color:var(--amber-ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:transform .08s ease,background .15s ease}
+.tip:active{transform:scale(.985)}
+.tip.logged{background:var(--green)}
+.tip:disabled{background:var(--surface);color:var(--muted);border:1px dashed var(--line)}
+.tip .m{font-family:var(--mark);font-weight:700;font-size:36px;letter-spacing:-.02em;line-height:1}
+.tip .s{font-size:14px;opacity:.8;font-variant-numeric:tabular-nums}
+.tip-meta{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:var(--muted);font-size:14px}
+.tip-meta b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+.link{color:var(--blue);text-decoration:underline;text-underline-offset:3px;min-height:44px;padding:0 4px}
+.link:disabled{opacity:.35;cursor:not-allowed}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:16px 18px}
+.stat .v{font-family:var(--serif);font-weight:500;font-size:28px;font-variation-settings:"opsz" 144;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.05}
+.stat.big .v{font-size:48px}
+.stat .l{color:var(--muted);font-size:13px;margin-top:4px}
+.stat.ok .v{color:var(--green)}
+.stat.low .v{color:var(--amber)}
+.step{display:flex;justify-content:space-between;align-items:center;padding:6px 0}
+.step-c{display:flex;align-items:center;gap:4px}
+.step-c button{width:46px;height:46px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-size:24px;line-height:1}
+.step-c b{min-width:48px;text-align:center;font-family:var(--serif);font-size:28px;font-weight:500;font-variant-numeric:tabular-nums;font-variation-settings:"opsz" 144}
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.nums label{display:block;font-size:13px;color:var(--muted)}
+.nums input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:4px;font-variant-numeric:tabular-nums;min-height:44px}
+.note{color:var(--muted);font-size:13px;margin-top:8px}
+.chart{margin:4px 0 20px}
+.chart h3{font-size:14px;font-weight:500;color:var(--muted);margin:0 0 6px}
+.chart svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:16px;font-size:13px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+.legend i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:6px;vertical-align:3px;background:var(--text)}
+.legend i.bar{height:10px;width:10px;background:var(--blue);vertical-align:-1px}
+.legend i.tgt{background:var(--amber)}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:13px;padding:6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 6px;border-bottom:1px solid var(--line);font-size:14px;white-space:nowrap}
+td.r,th.r{text-align:right}
+.x{color:var(--muted);width:36px;height:36px;border-radius:6px;font-size:18px}
+.x:hover{color:var(--red);background:var(--surface)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.empty{color:var(--muted);padding:14px 0}
+.foot{color:var(--muted);font-size:13px;padding-top:16px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="mark">Tip<span>M8</span></div>
+  <div class="sub">COS tipping log</div>
+</header>
+
+<div class="grid">
+<div class="col-a">
+
+  <section>
+    <div class="row">
+      <input class="text" id="shiftLabel" placeholder="Shift label, e.g. Day 12 Sep" autocomplete="off">
+    </div>
+    <div class="clock">
+      <span class="t" id="elapsed">00:00:00</span>
+      <span class="sub" id="shiftStatus"></span>
+    </div>
+    <div class="row">
+      <button class="btn" id="startBtn">Start shift clock</button>
+      <button class="btn" id="endBtn">End shift</button>
+      <button class="btn primary" id="newBtn" hidden>New shift</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="ore" id="oreSel" role="group" aria-label="Ore source"></div>
+    <button class="tip" id="tipBtn" aria-label="Log a truck tip">
+      <span class="m" id="tipMain">Tip</span>
+      <span class="s" id="tipSub"></span>
+    </button>
+    <div class="tip-meta">
+      <span>Since last tip <b id="sinceLast">—</b></span>
+      <button class="link" id="undoBtn">Undo last tip</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="stats">
+      <div class="stat big"><div class="v" id="cumT">0</div><div class="l">tonnes to COS</div></div>
+      <div class="stat big" id="tphShiftStat"><div class="v" id="tphShift">—</div><div class="l">tph, shift average</div></div>
+      <div class="stat"><div class="v" id="tph30">—</div><div class="l">tph, last 30 min</div></div>
+      <div class="stat"><div class="v" id="loads">0</div><div class="l">loads</div></div>
+      <div class="stat"><div class="v" id="avgInt">—</div><div class="l">average between loads</div></div>
+      <div class="stat"><div class="v" id="targetInt">—</div><div class="l">target between loads</div></div>
+      <div class="stat"><div class="v" id="cycle">—</div><div class="l">implied truck cycle</div></div>
+      <div class="stat"><div class="v" id="lastInt">—</div><div class="l">last interval</div></div>
+      <div class="stat"><div class="v" id="perTruck">—</div><div class="l">t/h per truck</div></div>
+      <div class="stat"><div class="v" id="perExc">—</div><div class="l">t/h per excavator</div></div>
+      <div class="stat"><div class="v" id="perLdr">—</div><div class="l">t/h per loader</div></div>
+    </div>
+    <div class="split-bar" id="splitBar"></div>
+    <div class="split-list" id="splitList"></div>
+  </section>
+
+  <section>
+    <h2>Fleet on the ROM</h2>
+    <div class="step"><span>Trucks hauling</span><div class="step-c"><button data-k="trucks" data-d="-1" aria-label="Fewer trucks">−</button><b id="v-trucks">6</b><button data-k="trucks" data-d="1" aria-label="More trucks">+</button></div></div>
+    <div class="step"><span>Excavators screening</span><div class="step-c"><button data-k="excavators" data-d="-1" aria-label="Fewer excavators">−</button><b id="v-excavators">2</b><button data-k="excavators" data-d="1" aria-label="More excavators">+</button></div></div>
+    <div class="step"><span>Loaders filling screened</span><div class="step-c"><button data-k="loaders" data-d="-1" aria-label="Fewer loaders">−</button><b id="v-loaders">2</b><button data-k="loaders" data-d="1" aria-label="More loaders">+</button></div></div>
+    <div class="nums">
+      <div><label for="payload">Truck payload, t</label><input id="payload" type="number" inputmode="decimal" step="0.5" min="1"></div>
+      <div><label for="fill">Fill factor</label><input id="fill" type="number" inputmode="decimal" step="0.01" min="0.1" max="1.5"></div>
+      <div><label for="targetTph">Target tph</label><input id="targetTph" type="number" inputmode="numeric" step="10" min="0" placeholder="optional"></div>
+    </div>
+    <div class="note">Fleet counts are stamped on each tip, so trends can be read against what was running.</div>
+  </section>
+
+</div>
+<div class="col-b">
+
+  <section>
+    <h2>Trends this shift</h2>
+    <div class="chart">
+      <h3>tph by 30 minute block</h3>
+      <div id="c-tph"></div>
+      <div class="legend" id="tphLegend"></div>
+    </div>
+    <div class="chart">
+      <h3>Cumulative tonnes</h3>
+      <div id="c-cum"></div>
+      <div class="legend"><span><i style="background:var(--blue)"></i>tonnes to COS</span><span><i class="tgt"></i>target pace</span></div>
+    </div>
+    <div class="chart">
+      <h3>Minutes between loads</h3>
+      <div id="c-int"></div>
+      <div class="legend"><span><i class="bar"></i>each load</span><span><i></i>average</span><span><i class="tgt"></i>target</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Load log</h2>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>#</th><th>Time</th><th>Ore</th><th class="r">t</th><th class="r">Gap</th><th class="r">Cum. t</th><th>Trk/Exc/Ldr</th><th></th></tr></thead>
+      <tbody id="logBody"></tbody>
+    </table>
+    </div>
+    <div class="actions">
+      <button class="btn" id="csvBtn">Export CSV</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Previous shifts</h2>
+    <div class="chart">
+      <h3>Shift average tph</h3>
+      <div id="c-hist"></div>
+    </div>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>Shift</th><th>Date</th><th class="r">Hours</th><th class="r">Loads</th><th class="r">Tonnes</th><th class="r">tph</th><th>Ore split</th><th>Trk/Exc/Ldr</th></tr></thead>
+      <tbody id="histBody"></tbody>
+    </table>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span id="storeNote"></span>
+    <button class="link" id="clearBtn">Clear all data on this device</button>
+  </div>
+
+</div>
+</div>
+</div>
+
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const $$=s=>Array.from(document.querySelectorAll(s));
+
+/* Storage: browser storage when available, in-memory fallback so the page never breaks. */
+const store=(()=>{let mem={},ok=false;
+  try{localStorage.setItem('__tipm8','1');localStorage.removeItem('__tipm8');ok=true}catch(e){}
+  return{
+    get:k=>{try{return ok?localStorage.getItem(k):(k in mem?mem[k]:null)}catch(e){return k in mem?mem[k]:null}},
+    set:(k,v)=>{try{if(ok)localStorage.setItem(k,v);else mem[k]=v}catch(e){mem[k]=v}},
+    ok};
+})();
+
+const KEY='tipm8.v1';
+const ORES=[{k:'Kopra',c:'#7DD3FF'},{k:'Toka',c:'#7EE0A6'},{k:'Marawuwung',c:'#C4A6FF'},{k:'Araren',c:'#FF8DA1'}];
+const oreColor=k=>(ORES.find(o=>o.k===k)||{c:'#8A9BAE'}).c;
+const DEF={shift:{label:'',startedAt:null,endedAt:null},fleet:{payload:30,fill:0.9,trucks:6,excavators:2,loaders:2,targetTph:0},ore:ORES[0].k,loads:[],history:[]};
+let S=(()=>{try{const r=store.get(KEY);if(r){const o=JSON.parse(r);
+  return{shift:{...DEF.shift,...(o.shift||{})},fleet:{...DEF.fleet,...(o.fleet||{})},ore:o.ore||DEF.ore,loads:o.loads||[],history:o.history||[]}}}catch(e){}
+  return JSON.parse(JSON.stringify(DEF))})();
+const save=()=>store.set(KEY,JSON.stringify(S));
+
+/* Helpers */
+const now=()=>Date.now();
+const pad=n=>String(n).padStart(2,'0');
+const tPerLoad=()=>Math.round(S.fleet.payload*S.fleet.fill*100)/100;
+const endT=()=>S.shift.endedAt||now();
+const fmtClock=ms=>{ms=Math.max(0,ms||0);const s=Math.floor(ms/1000);return pad(Math.floor(s/3600))+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60)};
+const fmtDur=ms=>{if(ms==null||!isFinite(ms))return'—';const s=Math.round(ms/1000);if(s<60)return s+'s';const m=Math.floor(s/60);if(m<60)return m+'m '+pad(s%60)+'s';return Math.floor(m/60)+'h '+pad(m%60)+'m'};
+const fmtTime=t=>{const d=new Date(t);return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())};
+const fmtHM=t=>{const d=new Date(t);return pad(d.getHours())+':'+pad(d.getMinutes())};
+const fmtDate=t=>new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short'});
+const fmtT=v=>Math.round(v||0).toLocaleString();
+const n0=v=>(v==null||!isFinite(v))?'—':Math.round(v).toLocaleString();
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* Stats */
+function stats(){
+  const n=S.loads.length, cum=S.loads.reduce((a,l)=>a+l.tonnes,0);
+  const started=S.shift.startedAt, end=endT();
+  const elapsed=started?Math.max(0,end-started):0;
+  const hrs=elapsed/3600000;
+  const tphShift=hrs>=1/60?cum/hrs:null;
+  const win=Math.min(30*60000,elapsed), cutoff=end-win;
+  const t30=S.loads.filter(l=>l.t>=cutoff).reduce((a,l)=>a+l.tonnes,0);
+  const tph30=elapsed>=5*60000?t30/(win/3600000):null;
+  const ints=S.loads.slice(1).map((l,i)=>l.t-S.loads[i].t);
+  const avgInt=ints.length?ints.reduce((a,b)=>a+b,0)/ints.length:null;
+  const lastInt=ints.length?ints[ints.length-1]:null;
+  const cycle=avgInt!=null&&S.fleet.trucks>0?avgInt*S.fleet.trucks:null;
+  const target=S.fleet.targetTph>0?tPerLoad()/S.fleet.targetTph*3600000:null;
+  const sinceLast=n?Math.max(0,end-S.loads[n-1].t):null;
+  const byOre={};for(const l of S.loads){const k=l.ore||'—';byOre[k]=byOre[k]||{t:0,n:0};byOre[k].t+=l.tonnes;byOre[k].n++}
+  return{n,cum,elapsed,tphShift,tph30,avgInt,lastInt,cycle,target,sinceLast,ints,byOre};
+}
+
+function buckets(){
+  if(!S.shift.startedAt)return[];
+  const step=30*60000, start=S.shift.startedAt, end=Math.max(endT(),start+1);
+  const n=Math.ceil((end-start)/step);
+  const arr=Array.from({length:n},(_,i)=>({t0:start+i*step,tonnes:0,by:{}}));
+  for(const l of S.loads){const i=Math.min(n-1,Math.max(0,Math.floor((l.t-start)/step)));arr[i].tonnes+=l.tonnes;const k=l.ore||'—';arr[i].by[k]=(arr[i].by[k]||0)+l.tonnes}
+  return arr.map((b,i)=>{
+    const partial=i===n-1&&end-b.t0<step;
+    const span=Math.max(Math.min(step,end-b.t0),partial?10*60000:step)/3600000;
+    return{...b,partial,span,tph:b.tonnes/span};
+  });
+}
+
+/* Rendering: live numbers */
+function renderClock(){
+  const st=stats(), f=S.fleet;
+  $('#elapsed').textContent=fmtClock(st.elapsed);
+  $('#shiftStatus').textContent=!S.shift.startedAt?'Clock starts on the first tip, or start it now'
+    :S.shift.endedAt?'Ended '+fmtTime(S.shift.endedAt):'Started '+fmtTime(S.shift.startedAt);
+  $('#sinceLast').textContent=st.sinceLast==null?'—':fmtDur(st.sinceLast);
+  $('#cumT').textContent=fmtT(st.cum);
+  $('#tphShift').textContent=n0(st.tphShift);
+  $('#tph30').textContent=n0(st.tph30);
+  $('#loads').textContent=st.n;
+  $('#avgInt').textContent=fmtDur(st.avgInt);
+  $('#lastInt').textContent=fmtDur(st.lastInt);
+  $('#cycle').textContent=fmtDur(st.cycle);
+  $('#targetInt').textContent=fmtDur(st.target);
+  const per=d=>st.tphShift!=null&&d>0?n0(st.tphShift/d):'—';
+  $('#perTruck').textContent=per(f.trucks);
+  $('#perExc').textContent=per(f.excavators);
+  $('#perLdr').textContent=per(f.loaders);
+  const el=$('#tphShiftStat'), tgt=f.targetTph;
+  el.classList.toggle('ok',tgt>0&&st.tphShift!=null&&st.tphShift>=tgt);
+  el.classList.toggle('low',tgt>0&&st.tphShift!=null&&st.tphShift<tgt);
+}
+
+function renderShiftControls(){
+  const started=!!S.shift.startedAt, ended=!!S.shift.endedAt;
+  $('#startBtn').disabled=started;
+  $('#endBtn').disabled=!started||ended;
+  $('#newBtn').hidden=!ended;
+  $('#undoBtn').disabled=!S.loads.length||ended;
+  const tip=$('#tipBtn');
+  tip.disabled=ended;
+  if(ended){$('#tipMain').textContent='Shift ended';$('#tipSub').textContent='Start a new shift to keep logging'}
+  else if(!tip.classList.contains('logged')){$('#tipMain').textContent='Tip';$('#tipSub').textContent=`${S.ore}, ${S.fleet.payload} t × ${S.fleet.fill} = ${tPerLoad().toFixed(1)} t per load`}
+  if(document.activeElement!==$('#shiftLabel'))$('#shiftLabel').value=S.shift.label||'';
+}
+
+function renderOre(){
+  $('#oreSel').innerHTML=ORES.map(o=>`<button type="button" data-ore="${o.k}" style="--ore:${o.c}" aria-pressed="${S.ore===o.k}">${o.k}</button>`).join('');
+}
+function renderSplit(){
+  const st=stats(), tot=st.cum||0;
+  const keys=ORES.map(o=>o.k).concat(Object.keys(st.byOre).filter(k=>!ORES.some(o=>o.k===k)));
+  $('#splitBar').innerHTML=tot?keys.map(k=>{const b=st.byOre[k];return b?`<i style="width:${b.t/tot*100}%;background:${oreColor(k)}" title="${k}"></i>`:''}).join(''):'';
+  $('#splitList').innerHTML=ORES.map(o=>{const b=st.byOre[o.k]||{t:0,n:0};return `<div style="--ore:${o.c}"><div class="n">${o.k}</div><div class="v">${fmtT(b.t)}</div><div class="l">${b.n} load${b.n===1?'':'s'}${tot?', '+Math.round(b.t/tot*100)+'%':''}</div></div>`}).join('');
+}
+function renderFleet(){
+  const f=S.fleet;
+  ['trucks','excavators','loaders'].forEach(k=>$('#v-'+k).textContent=f[k]);
+  if(document.activeElement!==$('#payload'))$('#payload').value=f.payload;
+  if(document.activeElement!==$('#fill'))$('#fill').value=f.fill;
+  if(document.activeElement!==$('#targetTph'))$('#targetTph').value=f.targetTph||'';
+}
+
+/* Charts (plain SVG, no dependencies) */
+const W=640,H=230,PL=46,PR=12,PT=12,PB=26,IW=W-PL-PR,IH=H-PT-PB;
+const svgOpen=()=>`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img">`;
+const emptyMsg=m=>`<div class="empty">${m}</div>`;
+function niceMax(v,n=4){if(!(v>0))return{max:n,step:1};const raw=v/n,mag=Math.pow(10,Math.floor(Math.log10(raw))),r=raw/mag;const step=(r<=1?1:r<=2?2:r<=5?5:10)*mag;return{max:Math.ceil(v/step)*step,step}}
+function yGrid(max,step,fmt){let s='';for(let v=0;v<=max+1e-9;v+=step){const y=PT+IH-v/max*IH;s+=`<line x1="${PL}" x2="${W-PR}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${PL-8}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt(v)}</text>`}return s}
+const hline=(y,color,dash)=>`<line x1="${PL}" x2="${W-PR}" y1="${y}" y2="${y}" stroke="${color}" stroke-width="1.5"${dash?' stroke-dasharray="6 5"':''}/>`;
+const yOf=(v,max)=>PT+IH-Math.min(v,max)/max*IH;
+
+function renderTph(){
+  const el=$('#c-tph'), b=buckets(), st=stats();
+  if(!b.length){el.innerHTML=emptyMsg('Trends appear after the first tip.');return}
+  const {max,step}=niceMax(Math.max(...b.map(x=>x.tph),st.tphShift||0,S.fleet.targetTph||0));
+  let s=svgOpen()+yGrid(max,step,v=>Math.round(v));
+  const bw=IW/b.length, gap=Math.min(6,bw*0.2), every=Math.max(1,Math.ceil(b.length/8));
+  const keys=ORES.map(o=>o.k).concat(['—']);
+  b.forEach((x,i)=>{
+    const X=PL+i*bw+gap/2, w=Math.max(1,bw-gap);
+    let y=PT+IH;
+    for(const k of keys){
+      const t=x.by[k]||0;if(!t)continue;
+      const h=Math.min(t/x.span,max)/max*IH;y-=h;
+      s+=`<rect x="${X}" y="${y}" width="${w}" height="${h}" fill="${oreColor(k)}" opacity="${x.partial?.45:.9}"/>`;
+    }
+    if(i%every===0)s+=`<text x="${X+w/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtHM(x.t0)}</text>`;
+  });
+  if(st.tphShift!=null)s+=hline(yOf(st.tphShift,max),'var(--text)');
+  if(S.fleet.targetTph>0)s+=hline(yOf(S.fleet.targetTph,max),'var(--amber)',true);
+  el.innerHTML=s+'</svg>';
+  $('#tphLegend').innerHTML=ORES.map(o=>`<span><i class="bar" style="background:${o.c}"></i>${o.k}</span>`).join('')+'<span><i></i>shift average</span><span><i class="tgt"></i>target</span>';
+}
+
+function renderCum(){
+  const el=$('#c-cum');
+  if(!S.shift.startedAt){el.innerHTML=emptyMsg('Cumulative tonnes will build here through the shift.');return}
+  const start=S.shift.startedAt, end=Math.max(endT(),start+60000), span=end-start;
+  let cum=0; const pts=[[start,0]]; for(const l of S.loads){cum+=l.tonnes;pts.push([l.t,cum])} pts.push([end,cum]);
+  const tgtEnd=S.fleet.targetTph>0?S.fleet.targetTph*span/3600000:0;
+  const {max,step}=niceMax(Math.max(cum,tgtEnd));
+  const xOf=t=>PL+(t-start)/span*IW;
+  let s=svgOpen()+yGrid(max,step,v=>v>=1000?(v/1000)+'k':v);
+  const stepMs=span<=2*3600000?30*60000:span<=6*3600000?3600000:2*3600000;
+  const d0=new Date(start);d0.setMinutes(0,0,0);
+  for(let t=d0.getTime();t<=end;t+=stepMs){if(t<start)continue;s+=`<text x="${xOf(t)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtHM(t)}</text>`}
+  const path=pts.map((p,i)=>(i?'L':'M')+xOf(p[0]).toFixed(1)+' '+yOf(p[1],max).toFixed(1)).join(' ');
+  s+=`<path d="${path} L${xOf(end).toFixed(1)} ${PT+IH} L${PL} ${PT+IH} Z" fill="var(--blue)" opacity=".12"/>`;
+  s+=`<path d="${path}" fill="none" stroke="var(--blue)" stroke-width="2"/>`;
+  if(tgtEnd>0)s+=`<line x1="${PL}" y1="${PT+IH}" x2="${xOf(end)}" y2="${yOf(tgtEnd,max)}" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="6 5"/>`;
+  el.innerHTML=s+'</svg>';
+}
+
+function renderInt(){
+  const el=$('#c-int'), st=stats();
+  if(st.ints.length<1){el.innerHTML=emptyMsg('Needs two tips before an interval exists.');return}
+  const mins=st.ints.map(v=>v/60000);
+  const tgtMin=st.target!=null?st.target/60000:0, avgMin=st.avgInt/60000;
+  const {max,step}=niceMax(Math.max(...mins,tgtMin,avgMin));
+  let s=svgOpen()+yGrid(max,step,v=>Math.round(v*10)/10);
+  const bw=IW/mins.length, gap=Math.min(4,bw*0.2), every=Math.max(1,Math.ceil(mins.length/10));
+  mins.forEach((m,i)=>{
+    const h=Math.min(m,max)/max*IH, X=PL+i*bw+gap/2;
+    const over=tgtMin>0&&m>tgtMin;
+    s+=`<rect x="${X}" y="${PT+IH-h}" width="${Math.max(1,bw-gap)}" height="${h}" rx="2" fill="${over?'var(--amber)':'var(--blue)'}" opacity=".85"/>`;
+    if(i%every===0)s+=`<text x="${X+(bw-gap)/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${i+2}</text>`;
+  });
+  s+=hline(yOf(avgMin,max),'var(--text)');
+  if(tgtMin>0)s+=hline(yOf(tgtMin,max),'var(--amber)',true);
+  el.innerHTML=s+'</svg>';
+}
+
+function renderHist(){
+  const el=$('#c-hist'), tb=$('#histBody'), h=S.history.slice(-12);
+  if(!S.history.length){el.innerHTML=emptyMsg('Finished shifts land here for shift-on-shift trends.');tb.innerHTML='';return}
+  const {max,step}=niceMax(Math.max(...h.map(x=>x.tph||0)));
+  let s=svgOpen()+yGrid(max,step,v=>Math.round(v));
+  const bw=IW/h.length, gap=Math.min(10,bw*0.25);
+  h.forEach((x,i)=>{
+    const hh=Math.min(x.tph||0,max)/max*IH, X=PL+i*bw+gap/2;
+    s+=`<rect x="${X}" y="${PT+IH-hh}" width="${Math.max(1,bw-gap)}" height="${hh}" rx="2" fill="var(--blue)" opacity=".85"/>`;
+    s+=`<text x="${X+(bw-gap)/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc((x.label||fmtDate(x.startedAt)).slice(0,10))}</text>`;
+  });
+  el.innerHTML=s+'</svg>';
+  tb.innerHTML=S.history.slice().reverse().map(x=>`<tr><td>${esc(x.label||'—')}</td><td>${fmtDate(x.startedAt)}</td><td class="r">${((x.endedAt-x.startedAt)/3600000).toFixed(1)}</td><td class="r">${x.loads}</td><td class="r">${fmtT(x.tonnes)}</td><td class="r">${n0(x.tph)}</td><td>${x.byOre?ORES.filter(o=>x.byOre[o.k]).map(o=>o.k[0]+' '+fmtT(x.byOre[o.k])).join(' / '):'—'}</td><td>${x.trucks}/${x.exc}/${x.ldr}</td></tr>`).join('');
+}
+
+function renderLog(){
+  const tb=$('#logBody');
+  if(!S.loads.length){tb.innerHTML='<tr><td colspan="8" class="empty">No loads logged this shift.</td></tr>';return}
+  let cum=0;
+  const rows=S.loads.map((l,i)=>{cum+=l.tonnes;return{i,l,cum,int:i?l.t-S.loads[i-1].t:null}}).reverse();
+  tb.innerHTML=rows.map(r=>`<tr><td>${r.i+1}</td><td>${fmtTime(r.l.t)}</td><td><span style="color:${oreColor(r.l.ore)}">${esc(r.l.ore||'—')}</span></td><td class="r">${r.l.tonnes.toFixed(1)}</td><td class="r">${fmtDur(r.int)}</td><td class="r">${fmtT(r.cum)}</td><td>${r.l.trucks}/${r.l.exc}/${r.l.ldr}</td><td><button class="x" data-del="${r.i}" aria-label="Delete load ${r.i+1}">×</button></td></tr>`).join('');
+}
+
+let lastChart=0;
+function renderCharts(){renderTph();renderCum();renderInt();lastChart=now()}
+function renderAll(){renderShiftControls();renderOre();renderFleet();renderClock();renderSplit();renderCharts();renderLog();renderHist()}
+
+/* Actions */
+let locked=false, flashTimer=null;
+function tip(){
+  if(locked||S.shift.endedAt)return;
+  locked=true;
+  const t=now();
+  if(!S.shift.startedAt)S.shift.startedAt=t;
+  S.loads.push({t,ore:S.ore,tonnes:tPerLoad(),trucks:S.fleet.trucks,exc:S.fleet.excavators,ldr:S.fleet.loaders});
+  save();
+  if(navigator.vibrate)navigator.vibrate(40);
+  const b=$('#tipBtn');
+  b.classList.add('logged');
+  $('#tipMain').textContent='Logged';
+  $('#tipSub').textContent=`Load ${S.loads.length}, ${tPerLoad().toFixed(1)} t ${S.ore} at ${fmtTime(t)}`;
+  clearTimeout(flashTimer);
+  flashTimer=setTimeout(()=>{b.classList.remove('logged');locked=false;renderShiftControls()},1500);
+  renderAll();
+}
+function startShift(){if(S.shift.startedAt)return;S.shift.startedAt=now();save();renderAll()}
+function endShift(){if(!S.shift.startedAt||S.shift.endedAt)return;if(!confirm('End this shift? Tipping stops until you start a new one.'))return;S.shift.endedAt=now();save();renderAll()}
+function newShift(){
+  const st=stats();
+  if(S.loads.length){
+    const last=S.loads[S.loads.length-1];
+    S.history.push({id:S.shift.startedAt,label:S.shift.label||'',startedAt:S.shift.startedAt,endedAt:endT(),loads:st.n,tonnes:Math.round(st.cum*10)/10,tph:st.tphShift,byOre:Object.fromEntries(Object.entries(st.byOre).map(([k,v])=>[k,Math.round(v.t*10)/10])),trucks:last.trucks,exc:last.exc,ldr:last.ldr});
+    if(S.history.length>60)S.history=S.history.slice(-60);
+  }
+  S.shift={label:'',startedAt:null,endedAt:null};
+  S.loads=[];
+  save();renderAll();
+}
+function undo(){if(!S.loads.length||S.shift.endedAt)return;S.loads.pop();save();renderAll()}
+function del(i){if(!confirm('Delete load '+(i+1)+'?'))return;S.loads.splice(i,1);save();renderAll()}
+function exportCsv(){
+  const label=S.shift.label||'shift';
+  const rows=[['shift','load','timestamp_iso','time','ore','tonnes','interval_s','cumulative_t','trucks','excavators','loaders']];
+  let cum=0;
+  S.loads.forEach((l,i)=>{cum+=l.tonnes;rows.push([label,i+1,new Date(l.t).toISOString(),fmtTime(l.t),l.ore||'',l.tonnes,i?Math.round((l.t-S.loads[i-1].t)/1000):'',Math.round(cum*10)/10,l.trucks,l.exc,l.ldr])});
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='tipm8-'+label.replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')+'-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();a.remove();
+}
+function clearAll(){if(!confirm('Clear the current shift, fleet settings and all previous shifts on this device?'))return;S=JSON.parse(JSON.stringify(DEF));save();renderAll()}
+
+/* Wiring */
+$('#tipBtn').addEventListener('click',tip);
+$('#startBtn').addEventListener('click',startShift);
+$('#endBtn').addEventListener('click',endShift);
+$('#newBtn').addEventListener('click',newShift);
+$('#undoBtn').addEventListener('click',undo);
+$('#csvBtn').addEventListener('click',exportCsv);
+$('#clearBtn').addEventListener('click',clearAll);
+$('#shiftLabel').addEventListener('input',e=>{S.shift.label=e.target.value.trim();save()});
+$('#oreSel').addEventListener('click',e=>{const b=e.target.closest('[data-ore]');if(!b)return;S.ore=b.dataset.ore;save();renderOre();renderShiftControls()});
+document.addEventListener('keydown',e=>{const i=['1','2','3','4'].indexOf(e.key);if(i>-1&&!/INPUT/.test(document.activeElement.tagName)){S.ore=ORES[i].k;save();renderOre();renderShiftControls()}});
+$('#logBody').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(b)del(+b.dataset.del)});
+$$('.step-c button').forEach(b=>b.addEventListener('click',()=>{
+  const k=b.dataset.k, d=+b.dataset.d;
+  S.fleet[k]=Math.max(0,Math.min(99,(S.fleet[k]||0)+d));
+  save();renderFleet();renderClock();renderShiftControls();
+}));
+const numIn=(id,k,min,max)=>$('#'+id).addEventListener('change',e=>{
+  let v=parseFloat(e.target.value);
+  if(!isFinite(v))v=k==='targetTph'?0:DEF.fleet[k];
+  S.fleet[k]=Math.max(min,Math.min(max,v));
+  save();renderFleet();renderClock();renderShiftControls();renderCharts();
+});
+numIn('payload','payload',1,500);
+numIn('fill','fill',0.1,1.5);
+numIn('targetTph','targetTph',0,100000);
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|BUTTON/.test(document.activeElement.tagName)){e.preventDefault();tip()}});
+
+$('#storeNote').textContent=store.ok?'Log is saved on this device and survives a refresh.':'Browser storage is off here, so a refresh will clear the log. Export CSV before you close.';
+
+renderAll();
+setInterval(()=>{renderClock();if(now()-lastChart>60000)renderCharts()},1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)renderAll()});
+})();
+</script>
+</body>
+</html>
