@@ -64,9 +64,28 @@ Each device picks a role under **Live sync**, and Off is the default:
 - **Off** — the device keeps its log to itself. Behaves exactly as it did before sync.
 - **Logging** — this is the device doing the tipping. It pushes the whole shift after
   every change. Only one device should be Logging at a time; nothing enforces that.
-- **Watching** — mirrors whichever device is Logging, read only, polling every 8 seconds
-  while the tab is visible. The device's own log is parked while it watches and comes
-  back when you switch off.
+- **Watching** — a dashboard rather than the logger's screen, read only, polling every 8
+  seconds while the tab is visible. The device's own log is parked while it watches and
+  comes back when you switch off.
+
+The watcher's dashboard leads with rate, because that is what someone glancing at it
+needs first: tph over the last 30 minutes, shift average, tonnes to COS and the target,
+sized to be read across a room and coloured green or amber against target. Under that
+sits the pace bar and projection, then loads, elapsed, time left, operating tph,
+utilisation, delay total and time since the last tip. The ore split, charts, load log and
+delay log follow underneath unchanged.
+
+A banner above the numbers calls out the thing worth interrupting someone for:
+
+- **Delayed** — a delay is open, with its reason and a running clock
+- **No tip** — nothing logged for over 15 minutes with no delay recorded, which usually
+  means a delay nobody opened
+- **Check** — more than one device is Logging. The watcher follows whichever shift started
+  most recently, and says so rather than quietly picking one
+
+The status dot goes amber and reports the age of the last successful poll if updates stop
+for 30 seconds. Numbers that have quietly gone stale are worse than numbers that admit
+it.
 
 **It never blocks on the network.** A tip is written to local storage first and queued
 for sending. If there is no signal the queue holds, the status line says so, and it

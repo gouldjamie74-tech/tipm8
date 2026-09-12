@@ -115,11 +115,30 @@ td.r,th.r{text-align:right}
 .chips[hidden],.delay-live[hidden],.modal[hidden]{display:none}
 .chips button[aria-pressed="true"]{color:var(--text);border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
 .sync{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px}
-.sync .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
-.sync .dot.live{background:var(--green)}
-.sync .dot.warn{background:var(--amber)}
-.sync .dot.err{background:var(--red)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.dot.live{background:var(--green)}
+.dot.warn{background:var(--amber)}
+.dot.err{background:var(--red)}
 body[data-role="viewer"] .writer{display:none}
+/* Watching shows a dashboard instead; these blocks would only repeat it. */
+.watcher{display:none}
+body[data-role="viewer"] .watcher{display:block}
+body[data-role="viewer"] .dup{display:none}
+#dash{padding:14px 0 18px;border-bottom:1px solid var(--line)}
+.dash-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.dash-label{font-family:var(--serif);font-weight:500;font-size:clamp(20px,3vw,30px);font-variation-settings:"opsz" 72;letter-spacing:-.01em;line-height:1.1}
+.dash-sub{color:var(--muted);font-size:13px;margin-top:3px}
+.dash-live{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+.dash-alert{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:14px;border-radius:10px;padding:13px 15px;background:#2B1E07;border:1px solid #4C3A12}
+.dash-alert[hidden]{display:none}
+.dash-alert .k{font-family:var(--mark);font-weight:700;letter-spacing:.02em;text-transform:uppercase;font-size:13px;color:var(--amber)}
+.dash-alert .d{font-variant-numeric:tabular-nums;color:var(--text)}
+.dash-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:16px 22px;margin-top:18px}
+.dash-hero .v{font-family:var(--serif);font-weight:500;font-size:clamp(38px,6.5vw,64px);font-variation-settings:"opsz" 144;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
+.dash-hero .l{color:var(--muted);font-size:13px;margin-top:6px}
+.dash-hero .ok .v{color:var(--green)}
+.dash-hero .low .v{color:var(--amber)}
+.dash-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(102px,1fr));gap:14px 18px;margin-top:18px}
 .sheet{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;width:100%;max-width:400px;max-height:88vh;overflow:auto}
 .sheet .f{margin-bottom:12px}
 .sheet label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
@@ -137,10 +156,42 @@ tr.edit:hover td{background:var(--surface)}
   <div class="sub">COS tipping log</div>
 </header>
 
+<section id="dash" class="watcher">
+  <div class="dash-head">
+    <div>
+      <div class="dash-label" id="dLabel">—</div>
+      <div class="dash-sub" id="dSub"></div>
+    </div>
+    <div class="dash-live"><i class="dot" id="dDot"></i><span id="dStatus">Connecting…</span></div>
+  </div>
+
+  <div class="dash-alert" id="dAlert" hidden><span class="k" id="dAlertK"></span><span class="d" id="dAlertD"></span></div>
+
+  <div class="dash-hero">
+    <div class="h" id="dNowBox"><div class="v" id="dNow">—</div><div class="l">tph now, last 30 min</div></div>
+    <div class="h" id="dAvgBox"><div class="v" id="dAvg">—</div><div class="l">tph, shift average</div></div>
+    <div class="h"><div class="v" id="dTonnes">0</div><div class="l">tonnes to COS</div></div>
+    <div class="h"><div class="v" id="dTarget">—</div><div class="l">target tph</div></div>
+  </div>
+
+  <div class="prog" id="dProg"></div>
+  <div class="meta"><span id="dPace">—</span><span><b id="dNeed"></b></span></div>
+
+  <div class="dash-row">
+    <div class="stat"><div class="v" id="dLoads">0</div><div class="l">loads</div></div>
+    <div class="stat"><div class="v" id="dElapsed">—</div><div class="l">elapsed</div></div>
+    <div class="stat"><div class="v" id="dLeft">—</div><div class="l">left in shift</div></div>
+    <div class="stat"><div class="v" id="dOp">—</div><div class="l">tph, delays excluded</div></div>
+    <div class="stat"><div class="v" id="dUtil">—</div><div class="l">utilisation</div></div>
+    <div class="stat"><div class="v" id="dDelay">—</div><div class="l">delay this shift</div></div>
+    <div class="stat"><div class="v" id="dSince">—</div><div class="l">since last tip</div></div>
+  </div>
+</section>
+
 <div class="grid">
 <div class="col-a">
 
-  <section>
+  <section class="dup">
     <div class="row">
       <input class="text" id="shiftLabel" placeholder="Shift label, e.g. Day 12 Sep" autocomplete="off">
     </div>
@@ -155,7 +206,7 @@ tr.edit:hover td{background:var(--surface)}
     </div>
   </section>
 
-  <section>
+  <section class="writer">
     <div class="ore writer" id="oreSel" role="group" aria-label="Ore source"></div>
     <button class="tip writer" id="tipBtn" aria-label="Log a truck tip">
       <span class="m" id="tipMain">Tip</span>
@@ -177,7 +228,7 @@ tr.edit:hover td{background:var(--surface)}
   </section>
 
   <section>
-    <div class="stats">
+    <div class="stats dup">
       <div class="stat big"><div class="v" id="cumT">0</div><div class="l">tonnes to COS</div></div>
       <div class="stat big" id="tphShiftStat"><div class="v" id="tphShift">—</div><div class="l">tph, shift average</div></div>
       <div class="stat"><div class="v" id="tph30">—</div><div class="l">tph, last 30 min</div></div>
@@ -193,8 +244,8 @@ tr.edit:hover td{background:var(--surface)}
       <div class="stat"><div class="v" id="perExc">—</div><div class="l">t/h per excavator</div></div>
       <div class="stat"><div class="v" id="perLdr">—</div><div class="l">t/h per loader</div></div>
     </div>
-    <div class="prog" id="shiftProg"></div>
-    <div class="meta">
+    <div class="prog dup" id="shiftProg"></div>
+    <div class="meta dup">
       <span id="projNote">—</span>
       <span><b id="paceNote"></b></span>
     </div>
@@ -411,7 +462,8 @@ function remoteState(d){
       tonnes:num(l.tonnes,0),trucks:l.trucks,exc:l.excavators,ldr:l.loaders})),
     delays:((d&&d.delays)||[]).map(x=>({id:x.id,t0:Date.parse(x.started_at),
       t1:x.ended_at?Date.parse(x.ended_at):null,reason:x.reason})),
-    history:[]
+    history:[],
+    source:{device:sh.device||null,openShifts:(d&&d.open_shifts)||0}
   };
 }
 
@@ -720,6 +772,67 @@ function renderLog(){
 
 let lastChart=0;
 function renderCharts(){renderTph();renderCum();renderInt();lastChart=now()}
+/* The watcher's view: rate first, then totals, then the detail below. */
+function renderDash(){
+  if(!viewing())return;
+  const st=stats(), f=S.fleet, tgt=f.targetTph>0, src=S.source||{};
+  const running=!!S.shift.startedAt&&!S.shift.endedAt;
+
+  $('#dLabel').textContent=S.shift.label||(S.shift.startedAt?'Shift running':'No shift running');
+  const from=src.device?', logged by '+src.device:'';
+  $('#dSub').textContent=!S.shift.startedAt?'Waiting for the logging device to start a shift'
+    :S.shift.endedAt?'Ended '+fmtTime(S.shift.endedAt)+', showing the last shift logged'+from
+    :'Started '+fmtTime(S.shift.startedAt)+from;
+
+  /* Stale numbers are worse than no numbers, so say so rather than sit there looking live. */
+  const stale=lastPull!=null&&now()-lastPull>30000;
+  const dot=$('#dDot');
+  dot.className='dot'+(syncErr?' err':stale?' warn':lastPull?' live':'');
+  $('#dStatus').textContent=syncErr?'Not updating: '+syncErr
+    :lastPull==null?'Connecting…'
+    :stale?'Last update '+fmtDur(now()-lastPull)+' ago'
+    :'Live';
+
+  const od=openDelay(), al=$('#dAlert');
+  const quiet=running&&st.sinceLast!=null&&st.sinceLast>15*60000;
+  const clash=(src.openShifts||0)>1;
+  al.hidden=!(od||quiet||clash);
+  if(clash){$('#dAlertK').textContent='Check';
+    $('#dAlertD').textContent=src.openShifts+' devices are logging at once. Showing the one that started most recently — set the others to Off or Watching.'}
+  else if(od){$('#dAlertK').textContent='Delayed';$('#dAlertD').textContent=od.reason+', '+fmtClock(now()-od.t0)}
+  else if(quiet){$('#dAlertK').textContent='No tip';$('#dAlertD').textContent='nothing logged for '+fmtDur(st.sinceLast)}
+
+  $('#dNow').textContent=n0(st.tph30);
+  $('#dAvg').textContent=n0(st.tphShift);
+  $('#dTonnes').textContent=fmtT(st.cum);
+  $('#dTarget').textContent=tgt?n0(f.targetTph):'—';
+  const mark=(box,v)=>{const e=$(box);
+    e.classList.toggle('ok',tgt&&v!=null&&v>=f.targetTph);
+    e.classList.toggle('low',tgt&&v!=null&&v<f.targetTph)};
+  mark('#dNowBox',st.tph30);
+  mark('#dAvgBox',st.tphShift);
+
+  $('#dLoads').textContent=st.n;
+  $('#dElapsed').textContent=S.shift.startedAt?fmtClock(st.elapsed):'—';
+  $('#dLeft').textContent=st.left>0?fmtDur(st.left):'—';
+  $('#dOp').textContent=n0(st.tphOp);
+  $('#dUtil').textContent=st.elapsed>0?pct(st.util):'—';
+  $('#dDelay').textContent=st.delay?fmtDur(st.delay):(S.shift.startedAt?'none':'—');
+  $('#dSince').textContent=st.sinceLast==null?'—':fmtDur(st.sinceLast);
+
+  const bar=$('#dProg'), pace=$('#dPace'), need=$('#dNeed');
+  if(!S.shift.startedAt||!st.planMs){bar.innerHTML='';pace.textContent='';need.textContent='';return}
+  const done=Math.min(1,st.elapsed/st.planMs);
+  bar.innerHTML=`<i style="width:${done*100}%"></i><i class="tgt" style="width:${(1-done)*100}%"></i>`;
+  pace.textContent=st.proj==null?'Tracking, no rate yet.'
+    :st.left<=0?`Shift complete, ${fmtT(st.cum)} t logged`
+    :`On pace for ${fmtT(st.proj)} t, ${fmtDur(st.left)} left`;
+  if(!tgt||st.goal==null||st.left<=0){need.textContent='';need.style.color='';return}
+  const gap=st.proj!=null?st.proj-st.goal:null;
+  need.textContent=st.needTph==null?'':`${n0(st.needTph)} tph needed`;
+  need.style.color=gap==null?'':gap>=0?'var(--green)':'var(--amber)';
+}
+
 function renderSync(){
   const chips=[['off','Off'],['logger','Logging'],['viewer','Watching']];
   $('#syncChips').innerHTML=chips.map(([k,t])=>
@@ -750,7 +863,7 @@ function renderSync(){
   }
 }
 
-function renderAll(){renderShiftControls();renderOre();renderFleet();renderDelay();renderClock();renderPace();renderSplit();renderCharts();renderLog();renderDelayLog();renderHist();renderSync()}
+function renderAll(){renderShiftControls();renderOre();renderFleet();renderDelay();renderClock();renderPace();renderSplit();renderCharts();renderLog();renderDelayLog();renderHist();renderSync();renderDash()}
 
 /* Actions */
 let locked=false, flashTimer=null;
@@ -940,7 +1053,7 @@ if(role==='logger'&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePu
 renderAll();
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))
   navigator.serviceWorker.register('sw.js').catch(()=>{});
-setInterval(()=>{renderClock();renderPace();renderSync();if(now()-lastChart>60000){renderCharts();renderDelayLog()}},1000);
+setInterval(()=>{renderClock();renderPace();renderSync();renderDash();if(now()-lastChart>60000){renderCharts();renderDelayLog()}},1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(viewing())pull();else renderAll()}});
 })();
 </script>
