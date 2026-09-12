@@ -77,10 +77,12 @@ input.text::placeholder{color:var(--muted)}
 .step{display:flex;justify-content:space-between;align-items:center;padding:6px 0}
 .step-c{display:flex;align-items:center;gap:4px}
 .step-c button{width:46px;height:46px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-size:24px;line-height:1}
+.step-c button:disabled{opacity:.3;cursor:not-allowed}
 .step-c b{min-width:48px;text-align:center;font-family:var(--serif);font-size:28px;font-weight:500;font-variant-numeric:tabular-nums;font-variation-settings:"opsz" 144}
 .nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:10px;margin-top:10px}
 .nums label{display:block;font-size:13px;color:var(--muted)}
 .nums input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:4px;font-variant-numeric:tabular-nums;min-height:44px}
+input:disabled{opacity:.5;cursor:not-allowed}
 .note{color:var(--muted);font-size:13px;margin-top:8px}
 .chart{margin:4px 0 20px}
 .chart h3{font-size:14px;font-weight:500;color:var(--muted);margin:0 0 6px}
@@ -111,6 +113,13 @@ td.r,th.r{text-align:right}
 .prog i.tgt{background:var(--line)}
 .modal{position:fixed;inset:0;z-index:20;background:rgba(5,9,13,.74);display:flex;align-items:center;justify-content:center;padding:16px}
 .chips[hidden],.delay-live[hidden],.modal[hidden]{display:none}
+.chips button[aria-pressed="true"]{color:var(--text);border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.sync{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px}
+.sync .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.sync .dot.live{background:var(--green)}
+.sync .dot.warn{background:var(--amber)}
+.sync .dot.err{background:var(--red)}
+body[data-role="viewer"] .writer{display:none}
 .sheet{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;width:100%;max-width:400px;max-height:88vh;overflow:auto}
 .sheet .f{margin-bottom:12px}
 .sheet label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
@@ -140,25 +149,25 @@ tr.edit:hover td{background:var(--surface)}
       <span class="sub" id="shiftStatus"></span>
     </div>
     <div class="row">
-      <button class="btn" id="startBtn">Start shift clock</button>
-      <button class="btn" id="endBtn">End shift</button>
-      <button class="btn primary" id="newBtn" hidden>New shift</button>
+      <button class="btn writer" id="startBtn">Start shift clock</button>
+      <button class="btn writer" id="endBtn">End shift</button>
+      <button class="btn primary writer" id="newBtn" hidden>New shift</button>
     </div>
   </section>
 
   <section>
-    <div class="ore" id="oreSel" role="group" aria-label="Ore source"></div>
-    <button class="tip" id="tipBtn" aria-label="Log a truck tip">
+    <div class="ore writer" id="oreSel" role="group" aria-label="Ore source"></div>
+    <button class="tip writer" id="tipBtn" aria-label="Log a truck tip">
       <span class="m" id="tipMain">Tip</span>
       <span class="s" id="tipSub"></span>
     </button>
-    <div class="tip-meta">
+    <div class="tip-meta writer">
       <span>Since last tip <b id="sinceLast">—</b></span>
       <button class="link" id="undoBtn">Undo last tip</button>
     </div>
-    <div class="chips" id="delayChips"></div>
-    <div class="note" id="delayNote">Tap a reason to open a delay. Logging a tip closes it.</div>
-    <div class="delay-live" id="delayLive" hidden>
+    <div class="chips writer" id="delayChips"></div>
+    <div class="note writer" id="delayNote">Tap a reason to open a delay. Logging a tip closes it.</div>
+    <div class="delay-live writer" id="delayLive" hidden>
       <div>
         <div class="t" id="delayClock">00:00:00</div>
         <div class="r" id="delayReason"></div>
@@ -270,6 +279,13 @@ tr.edit:hover td{background:var(--surface)}
     </div>
   </section>
 
+  <section>
+    <h2>Live sync</h2>
+    <div class="chips" id="syncChips"></div>
+    <div class="sync"><i class="dot" id="syncDot"></i><span id="syncNote">Off. This device keeps its log to itself.</span></div>
+    <div class="note" id="syncHint"></div>
+  </section>
+
   <div class="foot">
     <span id="storeNote"></span>
     <button class="link" id="clearBtn">Clear all data on this device</button>
@@ -315,7 +331,114 @@ const DEF={shift:{label:'',startedAt:null,endedAt:null},fleet:{payload:30,fill:0
 let S=(()=>{try{const r=store.get(KEY);if(r){const o=JSON.parse(r);
   return{shift:{...DEF.shift,...(o.shift||{})},fleet:{...DEF.fleet,...(o.fleet||{})},ore:o.ore||DEF.ore,loads:o.loads||[],delays:o.delays||[],history:o.history||[]}}}catch(e){}
   return JSON.parse(JSON.stringify(DEF))})();
-const save=()=>store.set(KEY,JSON.stringify(S));
+
+/* ---- Live sync -------------------------------------------------------------
+   One device logs and pushes its whole shift; the rest poll and mirror it.
+   The logging device never waits on the network: writes land in local storage
+   first and a snapshot is queued, so a dropped signal costs nothing but lag. */
+const SB={url:'https://wwrhpkkqgpasiemepghu.supabase.co',
+          key:'sb_publishable_La-Jaq3Eyd4wBPVGCqz2qw_lRs5yukb',
+          site:'rom'};
+const ROLE_KEY='tipm8.role';
+const uid=()=>(self.crypto&&crypto.randomUUID)?crypto.randomUUID()
+  :'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+     const r=Math.random()*16|0;return (c==='x'?r:(r&3|8)).toString(16)});
+let role=store.get(ROLE_KEY)||'off';
+let stash=null, pending={}, pushing=false, pushTimer=null, pollTimer=null;
+let lastPush=null, lastPull=null, syncErr=null, syncRejected=false;
+const viewing=()=>role==='viewer';
+const sbHeaders=()=>({'apikey':SB.key,'Authorization':'Bearer '+SB.key,'Content-Type':'application/json'});
+const iso=t=>t?new Date(t).toISOString():null;
+
+const save=()=>{
+  if(viewing())return;                       /* mirrored data is never written over the device's own log */
+  if(S.shift.startedAt&&!S.shift.id)S.shift.id=uid();
+  store.set(KEY,JSON.stringify(S));
+  if(role==='logger'&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
+  renderSync();
+};
+
+function snapshot(){
+  return{
+    p_shift:{id:S.shift.id,site:SB.site,label:S.shift.label||'',
+      started_at:iso(S.shift.startedAt),ended_at:iso(S.shift.endedAt),
+      payload:S.fleet.payload,fill:S.fleet.fill,trucks:S.fleet.trucks,
+      excavators:S.fleet.excavators,loaders:S.fleet.loaders,
+      target_tph:S.fleet.targetTph,shift_hours:S.fleet.shiftHours,device:deviceName()},
+    p_loads:S.loads.map(l=>({id:l.id,logged_at:iso(l.t),ore:l.ore||'',tonnes:l.tonnes,
+      trucks:l.trucks,excavators:l.exc,loaders:l.ldr})),
+    p_delays:S.delays.map(d=>({id:d.id,started_at:iso(d.t0),ended_at:iso(d.t1),reason:d.reason||''}))
+  };
+}
+function deviceName(){
+  let n=store.get('tipm8.device');
+  if(!n){n='dev-'+uid().slice(0,8);store.set('tipm8.device',n)}
+  return n;
+}
+function schedulePush(){clearTimeout(pushTimer);pushTimer=setTimeout(drain,1200)}
+
+async function drain(){
+  if(pushing||role!=='logger')return;
+  const ids=Object.keys(pending);
+  if(!ids.length)return;
+  pushing=true;renderSync();
+  for(const id of ids){
+    const snap=pending[id];
+    try{
+      const r=await fetch(SB.url+'/rest/v1/rpc/sync_shift',
+        {method:'POST',headers:sbHeaders(),body:JSON.stringify(snap)});
+      if(!r.ok)throw Object.assign(new Error('rejected by the log (HTTP '+r.status+')'),{rejected:true});
+      if(pending[id]===snap)delete pending[id];   /* a newer snapshot may have replaced it mid-flight */
+      lastPush=now();syncErr=null;syncRejected=false;
+    }catch(e){syncErr=e.message||'no connection';syncRejected=!!e.rejected;break}
+  }
+  pushing=false;renderSync();
+  if(Object.keys(pending).length){clearTimeout(pushTimer);pushTimer=setTimeout(drain,15000)}
+}
+
+function remoteState(d){
+  const sh=(d&&d.shift)||{};
+  const num=(v,f)=>{const n=parseFloat(v);return isFinite(n)?n:f};
+  return{
+    shift:{id:sh.id||null,label:sh.label||'',
+      startedAt:sh.started_at?Date.parse(sh.started_at):null,
+      endedAt:sh.ended_at?Date.parse(sh.ended_at):null},
+    fleet:{payload:num(sh.payload,30),fill:num(sh.fill,0.9),trucks:num(sh.trucks,0),
+      excavators:num(sh.excavators,0),loaders:num(sh.loaders,0),
+      targetTph:num(sh.target_tph,0),shiftHours:num(sh.shift_hours,12)},
+    ore:ORES[0].k,
+    loads:((d&&d.loads)||[]).map(l=>({id:l.id,t:Date.parse(l.logged_at),ore:l.ore,
+      tonnes:num(l.tonnes,0),trucks:l.trucks,exc:l.excavators,ldr:l.loaders})),
+    delays:((d&&d.delays)||[]).map(x=>({id:x.id,t0:Date.parse(x.started_at),
+      t1:x.ended_at?Date.parse(x.ended_at):null,reason:x.reason})),
+    history:[]
+  };
+}
+
+async function pull(){
+  if(!viewing())return;
+  try{
+    const r=await fetch(SB.url+'/rest/v1/rpc/active_shift',
+      {method:'POST',headers:sbHeaders(),body:JSON.stringify({p_site:SB.site})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    S=remoteState(d);
+    lastPull=now();syncErr=null;
+    renderAll();
+  }catch(e){syncErr=e.message||'no connection';renderSync()}
+}
+
+function setRole(r){
+  if(r===role)return;
+  if(r==='viewer'&&!viewing())stash=S;                  /* park this device's own log */
+  if(r!=='viewer'&&viewing()&&stash){S=stash;stash=null}
+  role=r;store.set(ROLE_KEY,r);
+  clearTimeout(pollTimer);pollTimer=null;
+  document.body.dataset.role=r;
+  if(r==='viewer'){pull();pollTimer=setInterval(()=>{if(!document.hidden)pull()},8000)}
+  if(r==='logger'&&S.shift.startedAt){if(!S.shift.id)S.shift.id=uid();pending[S.shift.id]=snapshot();schedulePush()}
+  renderAll();
+}
 
 /* Helpers */
 const now=()=>Date.now();
@@ -389,6 +512,14 @@ function buckets(){
   });
 }
 
+/* Rows written before sync existed have no id; give them one so they can be synced. */
+(()=>{let m=false;
+  for(const l of S.loads)if(!l.id){l.id=uid();m=true}
+  for(const d of S.delays)if(!d.id){d.id=uid();m=true}
+  if(S.shift.startedAt&&!S.shift.id){S.shift.id=uid();m=true}
+  if(m&&!viewing())store.set(KEY,JSON.stringify(S));
+})();
+
 /* Rendering: live numbers */
 function renderClock(){
   const st=stats(), f=S.fleet;
@@ -420,6 +551,8 @@ function renderClock(){
 
 function renderShiftControls(){
   const started=!!S.shift.startedAt, ended=!!S.shift.endedAt;
+  if(viewing()){['startBtn','endBtn','newBtn','undoBtn','tipBtn','csvBtn','backupBtn','restoreBtn','clearBtn']
+    .forEach(k=>{const e=$('#'+k);if(e)e.disabled=k==='csvBtn'?false:true});}
   $('#startBtn').disabled=started;
   $('#endBtn').disabled=!started||ended;
   $('#newBtn').hidden=!ended;
@@ -442,6 +575,9 @@ function renderSplit(){
 }
 function renderFleet(){
   const f=S.fleet;
+  $$('.step-c button').forEach(b=>b.disabled=viewing());
+  ['payload','fill','targetTph','shiftHours'].forEach(k=>{const e=$('#'+k);if(e)e.disabled=viewing()});
+  $('#shiftLabel').disabled=viewing();
   ['trucks','excavators','loaders'].forEach(k=>$('#v-'+k).textContent=f[k]);
   if(document.activeElement!==$('#payload'))$('#payload').value=f.payload;
   if(document.activeElement!==$('#fill'))$('#fill').value=f.fill;
@@ -579,22 +715,52 @@ function renderLog(){
   if(!S.loads.length){tb.innerHTML='<tr><td colspan="8" class="empty">No loads logged this shift.</td></tr>';return}
   let cum=0;
   const rows=S.loads.map((l,i)=>{cum+=l.tonnes;return{i,l,cum,int:i?l.t-S.loads[i-1].t:null}}).reverse();
-  tb.innerHTML=rows.map(r=>`<tr class="edit" data-edit="${r.i}"><td>${r.i+1}</td><td>${fmtTime(r.l.t)}</td><td><span style="color:${oreColor(r.l.ore)}">${esc(r.l.ore||'—')}</span></td><td class="r">${r.l.tonnes.toFixed(1)}</td><td class="r">${fmtDur(r.int)}</td><td class="r">${fmtT(r.cum)}</td><td>${r.l.trucks}/${r.l.exc}/${r.l.ldr}</td><td><button class="x" data-del="${r.i}" aria-label="Delete load ${r.i+1}">×</button></td></tr>`).join('');
+  tb.innerHTML=rows.map(r=>`<tr class="${viewing()?'':'edit'}" data-edit="${r.i}"><td>${r.i+1}</td><td>${fmtTime(r.l.t)}</td><td><span style="color:${oreColor(r.l.ore)}">${esc(r.l.ore||'—')}</span></td><td class="r">${r.l.tonnes.toFixed(1)}</td><td class="r">${fmtDur(r.int)}</td><td class="r">${fmtT(r.cum)}</td><td>${r.l.trucks}/${r.l.exc}/${r.l.ldr}</td><td><button class="x" data-del="${r.i}" aria-label="Delete load ${r.i+1}">×</button></td></tr>`).join('');
 }
 
 let lastChart=0;
 function renderCharts(){renderTph();renderCum();renderInt();lastChart=now()}
-function renderAll(){renderShiftControls();renderOre();renderFleet();renderDelay();renderClock();renderPace();renderSplit();renderCharts();renderLog();renderDelayLog();renderHist()}
+function renderSync(){
+  const chips=[['off','Off'],['logger','Logging'],['viewer','Watching']];
+  $('#syncChips').innerHTML=chips.map(([k,t])=>
+    `<button type="button" data-role="${k}" aria-pressed="${role===k}">${t}</button>`).join('');
+  const dot=$('#syncDot'), note=$('#syncNote'), hint=$('#syncHint');
+  const queued=Object.keys(pending).length;
+  dot.className='dot';
+  if(role==='off'){
+    note.textContent='Off. This device keeps its log to itself.';
+    hint.textContent='Switch on Logging here if this is the device doing the tipping, or Watching to mirror it.';
+  }else if(role==='logger'){
+    if(syncErr&&queued){
+      dot.classList.add(syncRejected?'err':'warn');
+      note.textContent=syncRejected
+        ? syncErr+'. Still retrying; the log on this device is unaffected.'
+        : 'Waiting on a connection, '+queued+' shift'+(queued===1?'':'s')+' queued. Tipping is unaffected.';}
+    else if(pushing){note.textContent='Sending…'}
+    else if(lastPush){dot.classList.add('live');note.textContent='Sent '+fmtDur(now()-lastPush)+' ago.'}
+    else{note.textContent=S.shift.startedAt?'Nothing sent yet.':'Starts sending on the first tip.'}
+    hint.textContent='This device is the record. Only one should be set to Logging at a time.';
+  }else{
+    if(syncErr){dot.classList.add('err');note.textContent='Cannot reach the log: '+syncErr}
+    else if(lastPull){dot.classList.add('live');
+      note.textContent=(S.shift.startedAt?'Watching '+(S.shift.label||'the running shift'):'No shift running')
+        +', checked '+fmtDur(now()-lastPull)+' ago.'}
+    else{note.textContent='Connecting…'}
+    hint.textContent='Read only. This device mirrors whichever device is Logging; its own log is untouched and comes back when you switch off.';
+  }
+}
+
+function renderAll(){renderShiftControls();renderOre();renderFleet();renderDelay();renderClock();renderPace();renderSplit();renderCharts();renderLog();renderDelayLog();renderHist();renderSync()}
 
 /* Actions */
 let locked=false, flashTimer=null;
 function tip(){
-  if(locked||S.shift.endedAt)return;
+  if(locked||S.shift.endedAt||viewing())return;
   locked=true;
   const t=now();
   if(!S.shift.startedAt)S.shift.startedAt=t;
   const od=openDelay();if(od)od.t1=t;
-  S.loads.push({t,ore:S.ore,tonnes:tPerLoad(),trucks:S.fleet.trucks,exc:S.fleet.excavators,ldr:S.fleet.loaders});
+  S.loads.push({id:uid(),t,ore:S.ore,tonnes:tPerLoad(),trucks:S.fleet.trucks,exc:S.fleet.excavators,ldr:S.fleet.loaders});
   save();
   if(navigator.vibrate)navigator.vibrate(40);
   const b=$('#tipBtn');
@@ -606,10 +772,10 @@ function tip(){
   renderAll();
 }
 function startDelay(reason){
-  if(S.shift.endedAt||openDelay())return;
+  if(S.shift.endedAt||openDelay()||viewing())return;
   const t=now();
   if(!S.shift.startedAt)S.shift.startedAt=t;
-  S.delays.push({t0:t,t1:null,reason});
+  S.delays.push({id:uid(),t0:t,t1:null,reason});
   save();renderAll();
 }
 function endDelay(){const d=openDelay();if(!d)return;d.t1=now();save();renderAll()}
@@ -630,6 +796,7 @@ function newShift(){
     S.history.push({id:S.shift.startedAt,label:S.shift.label||'',startedAt:S.shift.startedAt,endedAt:endT(),loads:st.n,tonnes:Math.round(st.cum*10)/10,tph:st.tphShift,tphOp:st.tphOp,delay:st.delay,byOre:Object.fromEntries(Object.entries(st.byOre).map(([k,v])=>[k,Math.round(v.t*10)/10])),trucks:last.trucks,exc:last.exc,ldr:last.ldr});
     if(S.history.length>60)S.history=S.history.slice(-60);
   }
+  if(role==='logger'&&S.shift.id&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
   S.shift={label:'',startedAt:null,endedAt:null};
   S.loads=[];
   S.delays=[];
@@ -641,7 +808,7 @@ function del(i){if(!confirm('Delete load '+(i+1)+'?'))return;S.loads.splice(i,1)
 let editIx=null, editOre=null;
 const modalOpen=()=>!$('#editModal').hidden;
 function openEdit(i){
-  const l=S.loads[i];if(!l||S.shift.endedAt)return;
+  const l=S.loads[i];if(!l||S.shift.endedAt||viewing())return;
   editIx=i;editOre=l.ore||ORES[0].k;
   const d=new Date(l.t);
   $('#eTime').value=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
@@ -714,7 +881,8 @@ function restore(file){
   r.readAsText(file);
 }
 
-function clearAll(){if(!confirm('Clear the current shift, fleet settings and all previous shifts on this device?'))return;S=JSON.parse(JSON.stringify(DEF));save();renderAll()}
+function clearAll(){
+  if(viewing())return alert('Switch Live sync off this device before clearing its own log.');if(!confirm('Clear the current shift, fleet settings and all previous shifts on this device?'))return;S=JSON.parse(JSON.stringify(DEF));save();renderAll()}
 
 /* Wiring */
 $('#tipBtn').addEventListener('click',tip);
@@ -727,6 +895,8 @@ $('#backupBtn').addEventListener('click',backup);
 $('#restoreBtn').addEventListener('click',()=>$('#restoreFile').click());
 $('#restoreFile').addEventListener('change',e=>{const f=e.target.files[0];if(f)restore(f);e.target.value=''});
 $('#delayEnd').addEventListener('click',endDelay);
+$('#syncChips').addEventListener('click',e=>{const b=e.target.closest('[data-role]');if(b)setRole(b.dataset.role)});
+window.addEventListener('online',()=>{if(role==='logger')drain();if(viewing())pull()});
 $('#delayChips').addEventListener('click',e=>{const b=e.target.closest('[data-reason]');if(b)startDelay(b.dataset.reason)});
 $('#delayBody').addEventListener('click',e=>{const b=e.target.closest('[data-ddel]');if(b)delDelay(+b.dataset.ddel)});
 $('#clearBtn').addEventListener('click',clearAll);
@@ -764,11 +934,14 @@ document.addEventListener('keydown',e=>{if(e.code==='Space'&&!modalOpen()&&!/INP
 
 $('#storeNote').textContent=store.ok?'Log is saved on this device and survives a refresh.':'Browser storage is off here, so a refresh will clear the log. Export CSV before you close.';
 
+document.body.dataset.role=role;
+if(role==='viewer'){pull();pollTimer=setInterval(()=>{if(!document.hidden)pull()},8000)}
+if(role==='logger'&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
 renderAll();
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))
   navigator.serviceWorker.register('sw.js').catch(()=>{});
-setInterval(()=>{renderClock();renderPace();if(now()-lastChart>60000){renderCharts();renderDelayLog()}},1000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)renderAll()});
+setInterval(()=>{renderClock();renderPace();renderSync();if(now()-lastChart>60000){renderCharts();renderDelayLog()}},1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(viewing())pull();else renderAll()}});
 })();
 </script>
 </body>

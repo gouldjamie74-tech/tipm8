@@ -54,6 +54,39 @@ refresh, but it is per-device and per-browser, and clearing site data wipes it.
   device. That is the way to move a log between devices.
 - **Export CSV** gives one row per load, then the delay log, then a shift summary row.
 
+## Live sync
+
+Local storage is per device, so sharing a shift needs a backend. TipM8 uses a Supabase
+project (`TipM8`, ap-southeast-1) with three tables — `shifts`, `loads`, `delays`.
+
+Each device picks a role under **Live sync**, and Off is the default:
+
+- **Off** — the device keeps its log to itself. Behaves exactly as it did before sync.
+- **Logging** — this is the device doing the tipping. It pushes the whole shift after
+  every change. Only one device should be Logging at a time; nothing enforces that.
+- **Watching** — mirrors whichever device is Logging, read only, polling every 8 seconds
+  while the tab is visible. The device's own log is parked while it watches and comes
+  back when you switch off.
+
+**It never blocks on the network.** A tip is written to local storage first and queued
+for sending. If there is no signal the queue holds, the status line says so, and it
+drains when the connection returns. A dropped signal costs lag, not data.
+
+Sync is one function call, `sync_shift`, which upserts the shift and its loads and
+delays and prunes anything deleted locally, in one transaction. Loads and delays carry
+client-generated UUIDs so a retry can never double up a tip. Watchers call
+`active_shift`, which returns the running shift — or the most recent finished one — with
+its loads and delays in a single round trip.
+
+Shift history stays on the device that logged it. Watchers see the live shift only.
+
+### Access
+The Supabase publishable key ships in the page, as it is designed to. It is not the
+gate: anyone holding it can read and write these three tables, so **the site must stay
+behind the Netlify site password**. Turn it on under Project configuration → Access &
+security → Visitor access → Password protection. Nothing else in the project is exposed
+by that key — no auth, no schema, no other tables.
+
 ## Offline and install
 `manifest.webmanifest` plus `sw.js` make the page installable to an iPad or phone home
 screen and keep it working with no signal. The service worker is network-first, so a
