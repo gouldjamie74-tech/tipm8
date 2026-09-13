@@ -54,16 +54,23 @@ refresh, but it is per-device and per-browser, and clearing site data wipes it.
   device. That is the way to move a log between devices.
 - **Export CSV** gives one row per load, then the delay log, then a shift summary row.
 
-## Live sync
+## Live sync and the two portals
 
 Local storage is per device, so sharing a shift needs a backend. TipM8 uses a Supabase
 project (`TipM8`, ap-southeast-1) with three tables — `shifts`, `loads`, `delays`.
 
-Each device picks a role from the toggle in the page header, and Off is the default:
+Two parties log the same trucks from opposite ends of the haul: mine geology as material
+leaves the ROM pad, process operations as it tips at the COS. Both write to one shift and
+the gap between them is reconciled. Each device picks a role from the toggle in the page
+header, and Off is the default:
 
 - **Off** — the device keeps its log to itself. Behaves exactly as it did before sync.
-- **Logging** — this is the device doing the tipping. It pushes the whole shift after
-  every change. Only one device should be Logging at a time; nothing enforces that.
+- **ROM pad** — mine geology's portal. The button reads Load, totals read as dispatched.
+- **COS** — process operations' portal. The button reads Tip, totals read as delivered.
+  Only one device per party should be logging; nothing enforces that.
+
+`?party=rom` and `?party=cos` set the role from the URL, so each device can be set up
+from a bookmark rather than a menu.
 - **Watching** — a dashboard rather than the logger's screen, read only, polling every 8
   seconds while the tab is visible. The device's own log is parked while it watches and
   comes back when you switch off.
@@ -98,6 +105,28 @@ client-generated UUIDs so a retry can never double up a tip. Watchers call
 its loads and delays in a single round trip.
 
 Shift history stays on the device that logged it. Watchers see the live shift only.
+
+### Shifts and reconciliation
+A shift is keyed on site, date and Day/Night — 06:00 to 18:00 local, with the small hours
+belonging to the night that started the evening before. Both parties derive the same key
+from their own clock, so neither has to start a shift for the other, and a device whose
+storage is cleared rejoins the shift it left instead of forking a new one.
+
+`sync_party` upserts a party's rows and prunes what that **device** deleted locally. The
+device scope matters: pruning by party alone meant a replacement iPad with an empty local
+log would sync and delete everything the real device had recorded.
+
+Reconciliation reads both streams back from the database rather than from local storage,
+so a portal with an empty local log still reconciles against everything already recorded.
+It reports loads and tonnes per party, the gap, and the gap per ore source, with the two
+cumulative curves plotted together — where they separate is when the gap opened.
+
+There is no truck number to pair on, so this is aggregate reconciliation: it tells you
+the ROM pad logged three more loads than the COS and that all three were Kopra, not which
+three trucks. A standing gap is normal, since trucks are always on the haul road; a gap
+that keeps growing means taps are being missed. Both parties compute tonnes the same way,
+from payload × fill held on the shift and shared between them, so tonnage variance is
+load-count variance restated rather than an independent measurement.
 
 ### Access
 The Supabase publishable key ships in the page, as it is designed to. It is not the

@@ -144,6 +144,17 @@ body[data-role="viewer"] .dup{display:none}
 .dash-hero .ok .v{color:var(--green)}
 .dash-hero .low .v{color:var(--amber)}
 .dash-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(102px,1fr));gap:14px 18px;margin-top:18px}
+.rec-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:14px 18px}
+.rec-top .v{font-family:var(--serif);font-weight:500;font-size:32px;font-variation-settings:"opsz" 144;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.05}
+.rec-top .l{color:var(--muted);font-size:13px;margin-top:4px}
+.rec-top .s{font-size:12px;color:var(--muted);margin-top:2px}
+.rec-top .gap .v{color:var(--amber)}
+.rec-top .gap.ok .v{color:var(--green)}
+.rec-strip{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px}
+.rec-strip b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+.rec-strip .gap{color:var(--amber);font-weight:500}
+.rec-strip .gap.ok{color:var(--green)}
+body[data-role="off"] .synced{display:none}
 .sheet{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;width:100%;max-width:400px;max-height:88vh;overflow:auto}
 .sheet .f{margin-bottom:12px}
 .sheet label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
@@ -159,7 +170,7 @@ tr.edit:hover td{background:var(--surface)}
 <header>
   <div>
     <div class="mark">Tip<span>M8</span></div>
-    <div class="sub">COS tipping log</div>
+    <div class="sub" id="tagline">COS tipping log</div>
   </div>
   <div class="hd-sync">
     <div class="chips" id="syncChips" role="group" aria-label="Live sync"></div>
@@ -224,7 +235,7 @@ tr.edit:hover td{background:var(--surface)}
       <span class="s" id="tipSub"></span>
     </button>
     <div class="tip-meta writer">
-      <span>Since last tip <b id="sinceLast">—</b></span>
+      <span><span id="sinceLabel">Since last tip</span> <b id="sinceLast">—</b></span>
       <button class="link" id="undoBtn">Undo last tip</button>
     </div>
     <div class="chips writer" id="delayChips"></div>
@@ -240,7 +251,7 @@ tr.edit:hover td{background:var(--surface)}
 
   <section>
     <div class="stats dup">
-      <div class="stat big"><div class="v" id="cumT">0</div><div class="l">tonnes to COS</div></div>
+      <div class="stat big"><div class="v" id="cumT">0</div><div class="l" id="cumLabel">tonnes to COS</div></div>
       <div class="stat big" id="tphShiftStat"><div class="v" id="tphShift">—</div><div class="l">tph, shift average</div></div>
       <div class="stat"><div class="v" id="tph30">—</div><div class="l">tph, last 30 min</div></div>
       <div class="stat"><div class="v" id="tphOp">—</div><div class="l">tph, delays excluded</div></div>
@@ -260,6 +271,7 @@ tr.edit:hover td{background:var(--surface)}
       <span id="projNote">—</span>
       <span><b id="paceNote"></b></span>
     </div>
+    <div class="rec-strip synced" id="recStrip"></div>
     <div class="split-bar" id="splitBar"></div>
     <div class="split-list" id="splitList"></div>
   </section>
@@ -280,6 +292,27 @@ tr.edit:hover td{background:var(--surface)}
 
 </div>
 <div class="col-b">
+
+  <section class="synced" id="recSec">
+    <h2>Reconciliation</h2>
+    <div class="rec-top">
+      <div><div class="v" id="recRomN">0</div><div class="l">ROM pad loads</div><div class="s" id="recRomT">0 t dispatched</div></div>
+      <div><div class="v" id="recCosN">0</div><div class="l">COS loads</div><div class="s" id="recCosT">0 t delivered</div></div>
+      <div class="gap" id="recGapBox"><div class="v" id="recGap">0</div><div class="l">gap, ROM less COS</div><div class="s" id="recGapPc"></div></div>
+    </div>
+    <div class="note" id="recNote"></div>
+    <div class="chart">
+      <h3>Dispatched against delivered</h3>
+      <div id="c-rec"></div>
+      <div class="legend"><span><i style="background:var(--amber)"></i>ROM pad</span><span><i style="background:var(--blue)"></i>COS</span></div>
+    </div>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>Ore source</th><th class="r">ROM loads</th><th class="r">COS loads</th><th class="r">Gap</th><th class="r">ROM t</th><th class="r">COS t</th></tr></thead>
+      <tbody id="recBody"></tbody>
+    </table>
+    </div>
+  </section>
 
   <section>
     <h2>Trends this shift</h2>
@@ -396,10 +429,42 @@ const SB={url:'https://wwrhpkkqgpasiemepghu.supabase.co',
           key:'sb_publishable_La-Jaq3Eyd4wBPVGCqz2qw_lRs5yukb',
           site:'rom'};
 const ROLE_KEY='tipm8.role';
+/* Two parties observe the same trucks: geology as they leave the ROM pad, process as
+   they tip at the COS. Each logs its own stream; the gap between them is the point. */
+const PARTIES={
+  rom:{label:'ROM pad',who:'Mine geology',verb:'Load',logged:'Loaded',
+       total:'tonnes dispatched',since:'Since last load',undo:'Undo last load',
+       one:'load',many:'loads'},
+  cos:{label:'COS',who:'Process operations',verb:'Tip',logged:'Logged',
+       total:'tonnes to COS',since:'Since last tip',undo:'Undo last tip',
+       one:'tip',many:'tips'}
+};
+const SHIFT_START_HOUR=6;   /* Day 06:00-17:59, Night 18:00-05:59 */
+/* Both parties derive the same shift key from their own clock, so neither has to
+   start a shift for the other and a device that loses its state rejoins the same one. */
+function shiftKey(t){
+  const d=new Date(t==null?now():t), h=d.getHours();
+  if(h>=SHIFT_START_HOUR&&h<SHIFT_START_HOUR+12)return{date:ymd(d),name:'Day'};
+  if(h>=SHIFT_START_HOUR+12)return{date:ymd(d),name:'Night'};
+  const y=new Date(d);y.setDate(y.getDate()-1);return{date:ymd(y),name:'Night'};
+}
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const uid=()=>(self.crypto&&crypto.randomUUID)?crypto.randomUUID()
   :'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
      const r=Math.random()*16|0;return (c==='x'?r:(r&3|8)).toString(16)});
-let role=store.get(ROLE_KEY)||'off';
+let role=(()=>{
+  const q=(location.search.match(/[?&]party=(rom|cos)/)||[])[1];   /* bookmarkable per-device setup */
+  if(q){store.set(ROLE_KEY,q);return q}
+  const r=store.get(ROLE_KEY)||'off';
+  return r==='logger'?'cos':r;                                     /* the old single-party role */
+})();
+const NOSTREAM=()=>({rom:{loads:[],delays:[]},cos:{loads:[],delays:[]},at:null});
+let remote=NOSTREAM();
+const party=()=>role==='rom'||role==='cos'?role:null;
+const primary=()=>role==='rom'?'rom':'cos';   /* a watcher leads with what reached the plant */
+const other=()=>primary()==='rom'?'cos':'rom';
+const P=()=>PARTIES[primary()];
+const synced=()=>role!=='off';
 let stash=null, pending={}, pushing=false, pushTimer=null, pollTimer=null;
 let lastPush=null, lastPull=null, syncErr=null, syncRejected=false;
 const viewing=()=>role==='viewer';
@@ -410,14 +475,15 @@ const save=()=>{
   if(viewing())return;                       /* mirrored data is never written over the device's own log */
   if(S.shift.startedAt&&!S.shift.id)S.shift.id=uid();
   store.set(KEY,JSON.stringify(S));
-  if(role==='logger'&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
+  if(party()&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
   renderSync();
 };
 
 function snapshot(){
+  const k=S.shift.key||shiftKey(S.shift.startedAt);
   return{
-    p_shift:{id:S.shift.id,site:SB.site,label:S.shift.label||'',
-      started_at:iso(S.shift.startedAt),ended_at:iso(S.shift.endedAt),
+    p_site:SB.site, p_date:k.date, p_name:k.name, p_party:party(),
+    p_settings:{label:S.shift.label||'',ended_at:iso(S.shift.endedAt),
       payload:S.fleet.payload,fill:S.fleet.fill,trucks:S.fleet.trucks,
       excavators:S.fleet.excavators,loaders:S.fleet.loaders,
       target_tph:S.fleet.targetTph,shift_hours:S.fleet.shiftHours,device:deviceName()},
@@ -434,14 +500,14 @@ function deviceName(){
 function schedulePush(){clearTimeout(pushTimer);pushTimer=setTimeout(drain,1200)}
 
 async function drain(){
-  if(pushing||role!=='logger')return;
+  if(pushing||!party())return;
   const ids=Object.keys(pending);
   if(!ids.length)return;
   pushing=true;renderSync();
   for(const id of ids){
     const snap=pending[id];
     try{
-      const r=await fetch(SB.url+'/rest/v1/rpc/sync_shift',
+      const r=await fetch(SB.url+'/rest/v1/rpc/sync_party',
         {method:'POST',headers:sbHeaders(),body:JSON.stringify(snap)});
       if(!r.ok)throw Object.assign(new Error('rejected by the log (HTTP '+r.status+')'),{rejected:true});
       if(pending[id]===snap)delete pending[id];   /* a newer snapshot may have replaced it mid-flight */
@@ -449,37 +515,55 @@ async function drain(){
     }catch(e){syncErr=e.message||'no connection';syncRejected=!!e.rejected;break}
   }
   pushing=false;renderSync();
-  if(Object.keys(pending).length){clearTimeout(pushTimer);pushTimer=setTimeout(drain,15000)}
+  if(Object.keys(pending).length){clearTimeout(pushTimer);pushTimer=setTimeout(drain,syncErr?15000:1200)}
+}
+
+/* Loads belonging to one party, mapped into the shape the rest of the app expects. */
+function rowsFor(d,which){
+  const num=(v,f)=>{const n=parseFloat(v);return isFinite(n)?n:f};
+  return{
+    loads:((d&&d.loads)||[]).filter(l=>l.party===which).map(l=>({id:l.id,t:Date.parse(l.logged_at),
+      ore:l.ore,tonnes:num(l.tonnes,0),trucks:l.trucks,exc:l.excavators,ldr:l.loaders})),
+    delays:((d&&d.delays)||[]).filter(x=>x.party===which).map(x=>({id:x.id,t0:Date.parse(x.started_at),
+      t1:x.ended_at?Date.parse(x.ended_at):null,reason:x.reason}))
+  };
 }
 
 function remoteState(d){
   const sh=(d&&d.shift)||{};
   const num=(v,f)=>{const n=parseFloat(v);return isFinite(n)?n:f};
+  const mine=rowsFor(d,primary());
   return{
-    shift:{id:sh.id||null,label:sh.label||'',
+    shift:{id:sh.id||null,label:sh.label||'',key:sh.shift_date?{date:sh.shift_date,name:sh.shift_name}:null,
       startedAt:sh.started_at?Date.parse(sh.started_at):null,
       endedAt:sh.ended_at?Date.parse(sh.ended_at):null},
     fleet:{payload:num(sh.payload,30),fill:num(sh.fill,0.9),trucks:num(sh.trucks,0),
       excavators:num(sh.excavators,0),loaders:num(sh.loaders,0),
       targetTph:num(sh.target_tph,0),shiftHours:num(sh.shift_hours,12)},
     ore:ORES[0].k,
-    loads:((d&&d.loads)||[]).map(l=>({id:l.id,t:Date.parse(l.logged_at),ore:l.ore,
-      tonnes:num(l.tonnes,0),trucks:l.trucks,exc:l.excavators,ldr:l.loaders})),
-    delays:((d&&d.delays)||[]).map(x=>({id:x.id,t0:Date.parse(x.started_at),
-      t1:x.ended_at?Date.parse(x.ended_at):null,reason:x.reason})),
+    loads:mine.loads,
+    delays:mine.delays,
     history:[],
     source:{device:sh.device||null,openShifts:(d&&d.open_shifts)||0}
   };
 }
 
 async function pull(){
-  if(!viewing())return;
+  if(!synced())return;
   try{
     const r=await fetch(SB.url+'/rest/v1/rpc/active_shift',
       {method:'POST',headers:sbHeaders(),body:JSON.stringify({p_site:SB.site})});
     if(!r.ok)throw new Error('HTTP '+r.status);
     const d=await r.json();
-    S=remoteState(d);
+    if(viewing())S=remoteState(d);
+    else{                                   /* a party keeps its own log and only borrows the other stream */
+      const sh=(d&&d.shift)||{};
+      if(sh.payload!=null&&document.activeElement!==$('#payload')){
+        S.fleet.payload=parseFloat(sh.payload);S.fleet.fill=parseFloat(sh.fill);
+        S.fleet.targetTph=parseFloat(sh.target_tph);S.fleet.shiftHours=parseFloat(sh.shift_hours);
+      }
+    }
+    remote={rom:rowsFor(d,'rom'),cos:rowsFor(d,'cos'),at:now()};
     lastPull=now();syncErr=null;
     renderAll();
   }catch(e){syncErr=e.message||'no connection';renderSync()}
@@ -492,8 +576,9 @@ function setRole(r){
   role=r;store.set(ROLE_KEY,r);
   clearTimeout(pollTimer);pollTimer=null;
   document.body.dataset.role=r;
-  if(r==='viewer'){pull();pollTimer=setInterval(()=>{if(!document.hidden)pull()},8000)}
-  if(r==='logger'&&S.shift.startedAt){if(!S.shift.id)S.shift.id=uid();pending[S.shift.id]=snapshot();schedulePush()}
+  remote=NOSTREAM();
+  if(synced()){pull();pollTimer=setInterval(()=>{if(!document.hidden)pull()},viewing()?8000:20000)}
+  if(party()&&S.shift.startedAt){if(!S.shift.id)S.shift.id=uid();pending[S.shift.id]=snapshot();schedulePush()}
   renderAll();
 }
 
@@ -617,8 +702,20 @@ function renderShiftControls(){
   const tip=$('#tipBtn');
   tip.disabled=ended;
   if(ended){$('#tipMain').textContent='Shift ended';$('#tipSub').textContent='Start a new shift to keep logging'}
-  else if(!tip.classList.contains('logged')){$('#tipMain').textContent='Tip';$('#tipSub').textContent=`${S.ore}, ${S.fleet.payload} t × ${S.fleet.fill} = ${tPerLoad().toFixed(1)} t per load`}
+  else if(!tip.classList.contains('logged')){$('#tipMain').textContent=P().verb;$('#tipSub').textContent=`${S.ore}, ${S.fleet.payload} t × ${S.fleet.fill} = ${tPerLoad().toFixed(1)} t per load`}
   if(document.activeElement!==$('#shiftLabel'))$('#shiftLabel').value=S.shift.label||'';
+}
+
+/* The two portals are the same screen with the verbs swapped. */
+function renderParty(){
+  const c=P();
+  $('#tagline').textContent=role==='off'?'COS tipping log'
+    :viewing()?'ROM pad to COS, reconciled'
+    :c.who+' · '+c.label;
+  $('#sinceLabel').textContent=c.since;
+  $('#undoBtn').textContent=c.undo;
+  $('#cumLabel').textContent=c.total;
+  if(!$('#tipBtn').classList.contains('logged')&&!S.shift.endedAt)$('#tipMain').textContent=c.verb;
 }
 
 function renderOre(){
@@ -777,6 +874,90 @@ function renderLog(){
 
 let lastChart=0;
 function renderCharts(){renderTph();renderCum();renderInt();lastChart=now()}
+/* Both parties count the same trucks from opposite ends. With no truck number to
+   pair on, the useful signal is the running gap and where in the shift it opened. */
+/* What the shift recorded, not what this device holds: a replacement iPad with an
+   empty local log must still reconcile against everything already logged. */
+function streamFor(which){
+  const db=remote[which].loads;
+  if(party()!==which)return db;
+  const seen=new Set(db.map(l=>l.id));
+  return db.concat(S.loads.filter(l=>!seen.has(l.id)));
+}
+
+function recon(){
+  const romL=streamFor('rom'), cosL=streamFor('cos');
+  const sum=a=>a.reduce((x,l)=>x+(l.tonnes||0),0);
+  const keys=ORES.map(o=>o.k);
+  const byOre=keys.map(k=>{
+    const r=romL.filter(l=>l.ore===k), c=cosL.filter(l=>l.ore===k);
+    return{k,romN:r.length,cosN:c.length,romT:sum(r),cosT:sum(c),gap:r.length-c.length};
+  }).filter(x=>x.romN||x.cosN);
+  const gapN=romL.length-cosL.length;
+  return{romL,cosL,romN:romL.length,cosN:cosL.length,romT:sum(romL),cosT:sum(cosL),
+         gapN,gapT:sum(romL)-sum(cosL),
+         pc:romL.length?gapN/romL.length:null,byOre};
+}
+
+function renderRecon(){
+  if(!synced())return;
+  const r=recon(), f=S.fleet;
+  $('#recRomN').textContent=r.romN;
+  $('#recCosN').textContent=r.cosN;
+  $('#recRomT').textContent=fmtT(r.romT)+' t dispatched';
+  $('#recCosT').textContent=fmtT(r.cosT)+' t delivered';
+  $('#recGap').textContent=(r.gapN>0?'+':'')+r.gapN;
+  $('#recGapPc').textContent=r.pc==null?'':Math.abs(Math.round(r.pc*100))+'% of ROM loads, '+fmtT(Math.abs(r.gapT))+' t';
+  /* Trucks on the haul road make a standing gap; only a growing one is a problem. */
+  const inTransit=Math.max(1,Math.round((f.trucks||0)/3));
+  const okGap=r.gapN>=0&&r.gapN<=inTransit;
+  $('#recGapBox').classList.toggle('ok',okGap);
+  $('#recNote').textContent=!r.romN&&!r.cosN
+    ?'Nothing logged by either party yet.'
+    :r.gapN<0?'The COS has logged more than the ROM pad. That cannot be haulage, so one side has entries the other is missing.'
+    :okGap?'Within the '+inTransit+' or so loads you would expect to be on the haul road at any time.'
+    :'A gap this size is more than trucks in transit. The chart below shows when it opened.';
+
+  $('#recBody').innerHTML=r.byOre.length?r.byOre.map(o=>
+    `<tr><td><span style="color:${oreColor(o.k)}">${esc(o.k)}</span></td><td class="r">${o.romN}</td><td class="r">${o.cosN}</td><td class="r"${o.gap?' style="color:var(--amber)"':''}>${o.gap>0?'+':''}${o.gap}</td><td class="r">${fmtT(o.romT)}</td><td class="r">${fmtT(o.cosT)}</td></tr>`
+  ).join(''):'<tr><td colspan="6" class="empty">No loads logged by either party.</td></tr>';
+
+  renderReconChart(r);
+
+  const strip=$('#recStrip');
+  const them=PARTIES[other()], mine=PARTIES[primary()];
+  if(!synced()){strip.innerHTML='';return}
+  strip.innerHTML=`<span>${esc(mine.label)} <b>${primary()==='rom'?r.romN:r.cosN}</b></span>`
+    +`<span>${esc(them.label)} <b>${other()==='rom'?r.romN:r.cosN}</b></span>`
+    +`<span class="gap${okGap?' ok':''}">gap ${r.gapN>0?'+':''}${r.gapN}</span>`
+    +(remote.at?`<span>checked ${fmtDur(now()-remote.at)} ago</span>`:'<span>not checked yet</span>');
+}
+
+function renderReconChart(r){
+  const el=$('#c-rec');
+  if(!r.romN&&!r.cosN){el.innerHTML=emptyMsg('Both streams appear here once either party logs.');return}
+  /* The window comes from what was logged, not this device's own clock, so a
+     portal with an empty local log still draws the whole shift. */
+  const all=r.romL.concat(r.cosL).map(l=>l.t);
+  const start=Math.min(S.shift.startedAt||Infinity,...all);
+  const end=Math.max(endT(),Math.max(...all)+60000), span=Math.max(1,end-start);
+  const line=arr=>{let c=0;const pts=[[start,0]];
+    for(const l of arr.slice().sort((a,b)=>a.t-b.t)){c+=l.tonnes;pts.push([l.t,c])}
+    pts.push([end,c]);return pts};
+  const rp=line(r.romL), cp=line(r.cosL);
+  const {max,step}=niceMax(Math.max(rp[rp.length-1][1],cp[cp.length-1][1]));
+  const xOf=t=>PL+(t-start)/span*IW;
+  let s=svgOpen()+yGrid(max,step,v=>v>=1000?(v/1000)+'k':v);
+  const stepMs=span<=2*3600000?30*60000:span<=6*3600000?3600000:2*3600000;
+  const d0=new Date(start);d0.setMinutes(0,0,0);
+  for(let t=d0.getTime();t<=end;t+=stepMs){if(t<start)continue;
+    s+=`<text x="${xOf(t)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtHM(t)}</text>`}
+  const path=pts=>pts.map((q,i)=>(i?'L':'M')+xOf(q[0]).toFixed(1)+' '+yOf(q[1],max).toFixed(1)).join(' ');
+  s+=`<path d="${path(rp)}" fill="none" stroke="var(--amber)" stroke-width="2"/>`;
+  s+=`<path d="${path(cp)}" fill="none" stroke="var(--blue)" stroke-width="2"/>`;
+  el.innerHTML=s+'</svg>';
+}
+
 /* The watcher's view: rate first, then totals, then the detail below. */
 function renderDash(){
   if(!viewing())return;
@@ -839,7 +1020,7 @@ function renderDash(){
 }
 
 function renderSync(){
-  const chips=[['off','Off'],['logger','Logging'],['viewer','Watching']];
+  const chips=[['off','Off'],['rom','ROM pad'],['cos','COS'],['viewer','Watching']];
   $('#syncChips').innerHTML=chips.map(([k,t])=>
     `<button type="button" data-role="${k}" aria-pressed="${role===k}">${t}</button>`).join('');
   const dot=$('#syncDot'), note=$('#syncNote'), hint=$('#syncHint');
@@ -847,8 +1028,8 @@ function renderSync(){
   dot.className='dot';
   if(role==='off'){
     note.textContent='Off. This device keeps its log to itself.';
-    hint.textContent='Switch on Logging here if this is the device doing the tipping, or Watching to mirror it.';
-  }else if(role==='logger'){
+    hint.textContent='ROM pad logs material leaving, COS logs it arriving, Watching mirrors both and reconciles them.';
+  }else if(party()){
     if(syncErr&&queued){
       dot.classList.add(syncRejected?'err':'warn');
       note.textContent=syncRejected
@@ -857,7 +1038,8 @@ function renderSync(){
     else if(pushing){note.textContent='Sending…'}
     else if(lastPush){dot.classList.add('live');note.textContent='Sent '+fmtDur(now()-lastPush)+' ago.'}
     else{note.textContent=S.shift.startedAt?'Nothing sent yet.':'Starts sending on the first tip.'}
-    hint.textContent='This device is the record. Only one should be set to Logging at a time.';
+    hint.textContent=P().who+' portal. This device is the record for the '+P().label
+      +'; only one device per party should be logging.';
   }else{
     if(syncErr){dot.classList.add('err');note.textContent='Cannot reach the log: '+syncErr}
     else if(lastPull){dot.classList.add('live');
@@ -868,7 +1050,7 @@ function renderSync(){
   }
 }
 
-function renderAll(){renderShiftControls();renderOre();renderFleet();renderDelay();renderClock();renderPace();renderSplit();renderCharts();renderLog();renderDelayLog();renderHist();renderSync();renderDash()}
+function renderAll(){renderShiftControls();renderOre();renderFleet();renderDelay();renderClock();renderPace();renderSplit();renderCharts();renderLog();renderDelayLog();renderHist();renderSync();renderParty();renderRecon();renderDash()}
 
 /* Actions */
 let locked=false, flashTimer=null;
@@ -883,7 +1065,7 @@ function tip(){
   if(navigator.vibrate)navigator.vibrate(40);
   const b=$('#tipBtn');
   b.classList.add('logged');
-  $('#tipMain').textContent='Logged';
+  $('#tipMain').textContent=P().logged;
   $('#tipSub').textContent=`Load ${S.loads.length}, ${tPerLoad().toFixed(1)} t ${S.ore} at ${fmtTime(t)}`;
   clearTimeout(flashTimer);
   flashTimer=setTimeout(()=>{b.classList.remove('logged');locked=false;renderShiftControls()},1500);
@@ -914,7 +1096,7 @@ function newShift(){
     S.history.push({id:S.shift.startedAt,label:S.shift.label||'',startedAt:S.shift.startedAt,endedAt:endT(),loads:st.n,tonnes:Math.round(st.cum*10)/10,tph:st.tphShift,tphOp:st.tphOp,delay:st.delay,byOre:Object.fromEntries(Object.entries(st.byOre).map(([k,v])=>[k,Math.round(v.t*10)/10])),trucks:last.trucks,exc:last.exc,ldr:last.ldr});
     if(S.history.length>60)S.history=S.history.slice(-60);
   }
-  if(role==='logger'&&S.shift.id&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
+  if(party()&&S.shift.id&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
   S.shift={label:'',startedAt:null,endedAt:null};
   S.loads=[];
   S.delays=[];
@@ -1014,7 +1196,7 @@ $('#restoreBtn').addEventListener('click',()=>$('#restoreFile').click());
 $('#restoreFile').addEventListener('change',e=>{const f=e.target.files[0];if(f)restore(f);e.target.value=''});
 $('#delayEnd').addEventListener('click',endDelay);
 $('#syncChips').addEventListener('click',e=>{const b=e.target.closest('[data-role]');if(b)setRole(b.dataset.role)});
-window.addEventListener('online',()=>{if(role==='logger')drain();if(viewing())pull()});
+window.addEventListener('online',()=>{if(party())drain();if(viewing())pull()});
 $('#delayChips').addEventListener('click',e=>{const b=e.target.closest('[data-reason]');if(b)startDelay(b.dataset.reason)});
 $('#delayBody').addEventListener('click',e=>{const b=e.target.closest('[data-ddel]');if(b)delDelay(+b.dataset.ddel)});
 $('#clearBtn').addEventListener('click',clearAll);
@@ -1053,8 +1235,8 @@ document.addEventListener('keydown',e=>{if(e.code==='Space'&&!modalOpen()&&!/INP
 $('#storeNote').textContent=store.ok?'Log is saved on this device and survives a refresh.':'Browser storage is off here, so a refresh will clear the log. Export CSV before you close.';
 
 document.body.dataset.role=role;
-if(role==='viewer'){pull();pollTimer=setInterval(()=>{if(!document.hidden)pull()},8000)}
-if(role==='logger'&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
+if(synced()){pull();pollTimer=setInterval(()=>{if(!document.hidden)pull()},viewing()?8000:20000)}
+if(party()&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
 renderAll();
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))
   navigator.serviceWorker.register('sw.js').catch(()=>{});
