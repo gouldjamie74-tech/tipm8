@@ -41,9 +41,19 @@ the projection clears the goal, amber if it does not.
 Loads re-sort by time after an edit, so intervals and charts stay honest. Undo last tip
 drops the most recent one.
 
-**Shifts.** End shift stops logging and closes any open delay. New shift files the
-finished one into Previous shifts with its tonnes, both tph figures, delay total and ore
-split, then clears the deck. Fleet settings carry over.
+**Shifts.** Shifts change over on their own at **06:30 and 18:30**. The shift on the
+deck is closed at the changeover instant rather than whenever the app next woke up, filed
+into Previous shifts with its tonnes, both tph figures, delay total and ore split, and a
+new shift opens stamped with the changeover time. Fleet settings carry over. Nobody has
+to remember a tap: the changeover fires from the clock tick, from the next tip, and when
+a sleeping device wakes, so an iPad left in a pocket across 18:30 catches up on unlock.
+
+Anything stamped after the changeover moves across to the new shift rather than being
+counted against the old one, and a delay still open at the boundary is closed on the old
+shift and reopened on the new one, so neither shift is credited with the other's time.
+
+End shift still stops logging early, and New shift still files the current one by hand —
+both are there for the odd shift that does not run to the clock.
 
 ## Data
 Saved in the browser's local storage on each device (key `tipm8.v1`) — it survives a
@@ -98,17 +108,27 @@ it.
 for sending. If there is no signal the queue holds, the status line says so, and it
 drains when the connection returns. A dropped signal costs lag, not data.
 
-Sync is one function call, `sync_shift`, which upserts the shift and its loads and
-delays and prunes anything deleted locally, in one transaction. Loads and delays carry
-client-generated UUIDs so a retry can never double up a tip. Watchers call
-`active_shift`, which returns the running shift — or the most recent finished one — with
-its loads and delays in a single round trip.
+Sync is one function call, `sync_party`, which upserts a party's shift, loads and
+delays and prunes what that device deleted locally, in one transaction. Loads and delays
+carry client-generated UUIDs so a retry can never double up a tip. Watchers call
+`active_shift`, which returns the newest shift with its loads and delays, plus a summary
+of the shift before it, in a single round trip.
 
-Shift history stays on the device that logged it. Watchers see the live shift only.
+`active_shift` orders by `started_at desc` and nothing else. It used to prefer a shift
+with no `ended_at`, which meant any shift left unclosed outranked every newer finished
+one and quietly served days-old numbers to every watcher. Newest started always wins now;
+shifts are keyed on date and Day/Night, so an older open shift is always a leftover.
+
+Finished shifts are read back from the database with `shift_summaries(site, from, to,
+limit)`, so a watching device that has logged nothing still sees the history. The
+Previous shifts table takes a From and To date, reports loads, tonnes, tph, delay and the
+ROM/COS gap per shift, and falls back to this device's own log when the page is offline
+or set to Off — the note under the date boxes says which of the two you are reading.
 
 ### Shifts and reconciliation
-A shift is keyed on site, date and Day/Night — 06:00 to 18:00 local, with the small hours
-belonging to the night that started the evening before. Both parties derive the same key
+A shift is keyed on site, date and Day/Night — Day is 06:30 to 18:29 local and Night
+18:30 to 06:29, with the small hours belonging to the night that started the evening
+before. Both parties derive the same key
 from their own clock, so neither has to start a shift for the other, and a device whose
 storage is cleared rejoins the shift it left instead of forking a new one.
 
@@ -127,6 +147,37 @@ three trucks. A standing gap is normal, since trucks are always on the haul road
 that keeps growing means taps are being missed. Both parties compute tonnes the same way,
 from payload × fill held on the shift and shared between them, so tonnage variance is
 load-count variance restated rather than an independent measurement.
+
+### Where the database lives
+The tables and the three functions are not in this repo — there is no migrations
+directory and no build step, so the Supabase project is its own source of truth. It does
+keep a migration history of its own, newest last:
+
+    tipm8_initial_schema              tables
+    tipm8_rls_policies
+    tipm8_sync_function
+    tipm8_active_shift_reports_contenders
+    tipm8_two_party_reconciliation    rows carry party and device
+    tipm8_prune_scoped_to_device
+    backup_schema_for_deleted_shifts  backup.deleted_shifts, outside public
+    active_shift_newest_started_wins  newest started_at wins, not newest unclosed
+    shift_summaries_and_prev_shift    shared history, and prev on active_shift
+
+To read what is actually deployed rather than trusting this file:
+
+    select pg_get_functiondef(p.oid) from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname in ('active_shift','sync_party','shift_summaries');
+
+`backup.deleted_shifts` holds shifts removed by hand, as a JSON blob per shift. It sits
+in a `backup` schema rather than `public` on purpose: PostgREST only exposes `public`, so
+nothing there is reachable with the publishable key.
+
+Deleting a shift from the database does not make it stay deleted. A device that still
+holds that shift as its current shift re-sends it on the next sync and `sync_party`
+recreates it, new row id and all. Move the device off the shift first — a changeover does
+this on its own now — and delete afterwards.
 
 ### Access
 The Supabase publishable key ships in the page, as it is designed to. It is not the

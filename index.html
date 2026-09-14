@@ -144,6 +144,19 @@ body[data-role="viewer"] .dup{display:none}
 .dash-hero .ok .v{color:var(--green)}
 .dash-hero .low .v{color:var(--amber)}
 .dash-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(102px,1fr));gap:14px 18px;margin-top:18px}
+.dash-prev{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}
+.dash-prev[hidden]{display:none}
+.dash-prev-h{font-family:var(--mark);font-weight:700;letter-spacing:.02em;text-transform:uppercase;font-size:12px;color:var(--muted)}
+.dash-prev-h span{font-family:inherit;font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px}
+.dash-prev .dash-row{margin-top:12px}
+.dash-prev .stat .v{font-size:24px}
+.dash-prev .stat.up .v{color:var(--green)}
+.dash-prev .stat.down .v{color:var(--amber)}
+.histbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:2px 0 14px}
+.histbar label{color:var(--muted);font-size:13px}
+.histbar input.text{flex:0 1 160px;min-width:140px;padding:8px 10px}
+.histbar .note{color:var(--muted);font-size:13px;flex-basis:100%}
+.live-tag{color:var(--amber);font-size:12px}
 .rec-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:14px 18px}
 .rec-top .v{font-family:var(--serif);font-weight:500;font-size:32px;font-variation-settings:"opsz" 144;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.05}
 .rec-top .l{color:var(--muted);font-size:13px;margin-top:4px}
@@ -207,6 +220,17 @@ tr.edit:hover td{background:var(--surface)}
     <div class="stat"><div class="v" id="dUtil">—</div><div class="l">utilisation</div></div>
     <div class="stat"><div class="v" id="dDelay">—</div><div class="l">delay this shift</div></div>
     <div class="stat"><div class="v" id="dSince">—</div><div class="l">since last tip</div></div>
+  </div>
+
+  <div class="dash-prev" id="dPrev" hidden>
+    <div class="dash-prev-h">Previous shift<span id="dPrevWhen"></span></div>
+    <div class="dash-row">
+      <div class="stat"><div class="v" id="pTonnes">—</div><div class="l">tonnes</div></div>
+      <div class="stat"><div class="v" id="pLoads">—</div><div class="l">loads</div></div>
+      <div class="stat"><div class="v" id="pTph">—</div><div class="l">tph average</div></div>
+      <div class="stat"><div class="v" id="pDelay">—</div><div class="l">delay</div></div>
+      <div class="stat" id="pDeltaBox"><div class="v" id="pDelta">—</div><div class="l">projected vs last</div></div>
+    </div>
   </div>
 </section>
 
@@ -362,13 +386,19 @@ tr.edit:hover td{background:var(--surface)}
 
   <section>
     <h2>Previous shifts</h2>
+    <div class="histbar">
+      <label for="histFrom">From</label><input type="date" id="histFrom" class="text">
+      <label for="histTo">To</label><input type="date" id="histTo" class="text">
+      <button class="link" id="histClear" type="button">Clear dates</button>
+      <span class="note" id="histNote"></span>
+    </div>
     <div class="chart">
       <h3>Shift average tph</h3>
       <div id="c-hist"></div>
     </div>
     <div class="tbl">
     <table>
-      <thead><tr><th>Shift</th><th>Date</th><th class="r">Hours</th><th class="r">Loads</th><th class="r">Tonnes</th><th class="r">tph</th><th class="r">tph op.</th><th class="r">Delay</th><th>Ore split</th><th>Trk/Exc/Ldr</th></tr></thead>
+      <thead><tr><th>Shift</th><th>Date</th><th class="r">Hours</th><th class="r">Loads</th><th class="r">Tonnes</th><th class="r">tph</th><th class="r">Delay</th><th class="r">ROM</th><th class="r">COS</th><th class="r">Gap t</th><th>Ore split</th></tr></thead>
       <tbody id="histBody"></tbody>
     </table>
     </div>
@@ -439,15 +469,30 @@ const PARTIES={
        total:'tonnes to COS',since:'Since last tip',undo:'Undo last tip',
        one:'tip',many:'tips'}
 };
-const SHIFT_START_HOUR=6;   /* Day 06:00-17:59, Night 18:00-05:59 */
+const SHIFT_START_MIN=6*60+30;   /* Day 06:30-18:29, Night 18:30-06:29 */
+const SHIFT_SPAN_MIN=720;
 /* Both parties derive the same shift key from their own clock, so neither has to
    start a shift for the other and a device that loses its state rejoins the same one. */
 function shiftKey(t){
-  const d=new Date(t==null?now():t), h=d.getHours();
-  if(h>=SHIFT_START_HOUR&&h<SHIFT_START_HOUR+12)return{date:ymd(d),name:'Day'};
-  if(h>=SHIFT_START_HOUR+12)return{date:ymd(d),name:'Night'};
+  const d=new Date(t==null?now():t), m=d.getHours()*60+d.getMinutes();
+  if(m>=SHIFT_START_MIN&&m<SHIFT_START_MIN+SHIFT_SPAN_MIN)return{date:ymd(d),name:'Day'};
+  if(m>=SHIFT_START_MIN+SHIFT_SPAN_MIN)return{date:ymd(d),name:'Night'};
   const y=new Date(d);y.setDate(y.getDate()-1);return{date:ymd(y),name:'Night'};
 }
+/* The instant the shift holding t began. A shift is stamped with its changeover time
+   rather than with whenever the first truck happened to tip, so elapsed, time left and
+   the pace projection measure the shift itself and not the gap before it got busy. */
+function shiftStart(t){
+  const d=new Date(t==null?now():t), m=d.getHours()*60+d.getMinutes();
+  const at=(mins,back)=>{const s=new Date(d);if(back)s.setDate(s.getDate()-1);
+    s.setHours(Math.floor(mins/60),mins%60,0,0);return s.getTime()};
+  if(m>=SHIFT_START_MIN+SHIFT_SPAN_MIN)return at(SHIFT_START_MIN+SHIFT_SPAN_MIN,false);
+  if(m>=SHIFT_START_MIN)return at(SHIFT_START_MIN,false);
+  return at(SHIFT_START_MIN+SHIFT_SPAN_MIN,true);
+}
+const keyOf=s=>s&&s.key?s.key:(s&&s.startedAt?shiftKey(s.startedAt):null);
+const sameKey=(a,b)=>!!a&&!!b&&a.date===b.date&&a.name===b.name;
+const keyLabel=k=>k?k.name+' '+fmtDate(new Date(k.date+'T00:00:00').getTime()):'';
 const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const uid=()=>(self.crypto&&crypto.randomUUID)?crypto.randomUUID()
   :'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
@@ -467,6 +512,7 @@ const P=()=>PARTIES[primary()];
 const synced=()=>role!=='off';
 let stash=null, pending={}, pushing=false, pushTimer=null, pollTimer=null;
 let lastPush=null, lastPull=null, syncErr=null, syncRejected=false;
+let prevShift=null, histRows=[], histAt=null, histBusy=false, histFrom='', histTo='';
 const viewing=()=>role==='viewer';
 const sbHeaders=()=>({'apikey':SB.key,'Authorization':'Bearer '+SB.key,'Content-Type':'application/json'});
 const iso=t=>t?new Date(t).toISOString():null;
@@ -483,7 +529,7 @@ function snapshot(){
   const k=S.shift.key||shiftKey(S.shift.startedAt);
   return{
     p_site:SB.site, p_date:k.date, p_name:k.name, p_party:party(),
-    p_settings:{label:S.shift.label||'',ended_at:iso(S.shift.endedAt),
+    p_settings:{label:S.shift.label||'',started_at:iso(S.shift.startedAt),ended_at:iso(S.shift.endedAt),
       payload:S.fleet.payload,fill:S.fleet.fill,trucks:S.fleet.trucks,
       excavators:S.fleet.excavators,loaders:S.fleet.loaders,
       target_tph:S.fleet.targetTph,shift_hours:S.fleet.shiftHours,device:deviceName()},
@@ -564,9 +610,33 @@ async function pull(){
       }
     }
     remote={rom:rowsFor(d,'rom'),cos:rowsFor(d,'cos'),at:now()};
+    prevShift=(d&&d.prev)||null;
     lastPull=now();syncErr=null;
     renderAll();
+    pullHistory();
   }catch(e){syncErr=e.message||'no connection';renderSync()}
+}
+
+/* Finished shifts used to live only on the device that logged them, so a watching
+   dashboard had nothing behind the live shift. These come from the database, which is
+   the only copy every device can see. Failures stay quiet: history is a reference, and
+   a stale table is not worth shouting over the live numbers. */
+async function pullHistory(force){
+  if(!synced()||histBusy)return;
+  if(!force&&histAt&&now()-histAt<60000)return;
+  histBusy=true;
+  try{
+    const body={p_site:SB.site,p_limit:120};
+    if(histFrom)body.p_from=histFrom;
+    if(histTo)body.p_to=histTo;
+    const r=await fetch(SB.url+'/rest/v1/rpc/shift_summaries',
+      {method:'POST',headers:sbHeaders(),body:JSON.stringify(body)});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    histRows=Array.isArray(d)?d:[];histAt=now();
+    renderHist();
+  }catch(e){}
+  finally{histBusy=false}
 }
 
 function setRole(r){
@@ -576,7 +646,7 @@ function setRole(r){
   role=r;store.set(ROLE_KEY,r);
   clearTimeout(pollTimer);pollTimer=null;
   document.body.dataset.role=r;
-  remote=NOSTREAM();
+  remote=NOSTREAM();prevShift=null;histRows=[];histAt=null;
   if(synced()){pull();pollTimer=setInterval(()=>{if(!document.hidden)pull()},viewing()?8000:20000)}
   if(party()&&S.shift.startedAt){if(!S.shift.id)S.shift.id=uid();pending[S.shift.id]=snapshot();schedulePush()}
   renderAll();
@@ -849,19 +919,78 @@ function renderInt(){
   el.innerHTML=s+'</svg>';
 }
 
+const dOf=d=>new Date(d+'T00:00:00').getTime();
+
+/* One shape for the table and the chart, whether the rows came from the database —
+   shared, and the only history a watching device has — or from this device's own log
+   when it is offline or set to Off. Newest first either way. */
+function histUnified(){
+  if(histRows.length)return histRows.map(r=>{
+    const which=primary();
+    const a=Date.parse(r.started_at);
+    /* A finished shift is measured to when it ended. A shift still running is measured to
+       now; one left unclosed days ago is measured to its last load, so a forgotten shift
+       reports the hours it actually ran rather than every hour since. */
+    const last=r.last_load?Date.parse(r.last_load):null;
+    const b=r.ended_at?Date.parse(r.ended_at)
+      :last?Math.min(now(),last+2*3600000)   /* running: to now, but a forgotten shift stops at its last load */
+      :now();
+    const hrs=(b&&b>a)?(b-a)/3600000:null;
+    const t=+(r[which+'_tonnes']||0);
+    return{label:r.label||'',date:r.shift_date,name:r.shift_name,startedAt:a,hours:hrs,
+      loads:+(r[which+'_loads']||0),tonnes:t,tph:(hrs>0)?t/hrs:null,
+      delay:+(r[which+'_delay_ms']||0),rom:+(r.rom_tonnes||0),cos:+(r.cos_tonnes||0),
+      byOre:r[which+'_by_ore']||null,open:!r.ended_at};
+  });
+  return S.history.slice().reverse().map(x=>{
+    const k=x.key||shiftKey(x.startedAt);
+    return{label:x.label||'',date:k.date,name:k.name,startedAt:x.startedAt,
+      hours:(x.endedAt-x.startedAt)/3600000,loads:x.loads,tonnes:x.tonnes,tph:x.tph,
+      delay:x.delay,rom:null,cos:null,byOre:x.byOre||null,open:false};
+  });
+}
+const histFiltered=()=>histUnified().filter(x=>(!histFrom||x.date>=histFrom)&&(!histTo||x.date<=histTo));
+
 function renderHist(){
-  const el=$('#c-hist'), tb=$('#histBody'), h=S.history.slice(-12);
-  if(!S.history.length){el.innerHTML=emptyMsg('Finished shifts land here for shift-on-shift trends.');tb.innerHTML='<tr><td colspan="9" class="empty">No finished shifts yet.</td></tr>';return}
+  const el=$('#c-hist'), tb=$('#histBody'), note=$('#histNote');
+  const rows=histFiltered(), ranged=!!(histFrom||histTo), COLS=11;
+  note.textContent=!rows.length?''
+    :rows.length+' shift'+(rows.length===1?'':'s')
+     +(histRows.length?' from the shared log':' from this device only')
+     +(ranged?', filtered by date':'');
+  if(!rows.length){
+    const m=ranged?'No shifts in that date range.'
+      :synced()?'Finished shifts land here once a changeover has happened.'
+      :'Finished shifts land here for shift-on-shift trends.';
+    el.innerHTML=emptyMsg(m);
+    tb.innerHTML='<tr><td colspan="'+COLS+'" class="empty">'+m+'</td></tr>';
+    return;
+  }
+  const h=rows.slice(0,12).slice().reverse();   /* chart reads oldest to newest */
   const {max,step}=niceMax(Math.max(...h.map(x=>x.tph||0)));
   let s=svgOpen()+yGrid(max,step,v=>Math.round(v));
   const bw=IW/h.length, gap=Math.min(10,bw*0.25);
   h.forEach((x,i)=>{
     const hh=Math.min(x.tph||0,max)/max*IH, X=PL+i*bw+gap/2;
     s+=`<rect x="${X}" y="${PT+IH-hh}" width="${Math.max(1,bw-gap)}" height="${hh}" rx="2" fill="var(--blue)" opacity=".85"/>`;
-    s+=`<text x="${X+(bw-gap)/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc((x.label||fmtDate(x.startedAt)).slice(0,10))}</text>`;
+    s+=`<text x="${X+(bw-gap)/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(x.name[0]+' '+fmtDate(dOf(x.date)))}</text>`;
   });
   el.innerHTML=s+'</svg>';
-  tb.innerHTML=S.history.slice().reverse().map(x=>`<tr><td>${esc(x.label||'—')}</td><td>${fmtDate(x.startedAt)}</td><td class="r">${((x.endedAt-x.startedAt)/3600000).toFixed(1)}</td><td class="r">${x.loads}</td><td class="r">${fmtT(x.tonnes)}</td><td class="r">${n0(x.tph)}</td><td class="r">${n0(x.tphOp)}</td><td class="r">${x.delay?fmtDur(x.delay):'—'}</td><td>${x.byOre?ORES.filter(o=>x.byOre[o.k]).map(o=>o.k[0]+' '+fmtT(x.byOre[o.k])).join(' / '):'—'}</td><td>${x.trucks}/${x.exc}/${x.ldr}</td></tr>`).join('');
+  tb.innerHTML=rows.map(x=>{
+    const g=(x.rom!=null&&x.cos!=null)?x.rom-x.cos:null;
+    return '<tr><td>'+esc(x.name)+(x.open?' <span class="live-tag">live</span>':'')
+        +(x.label?' · '+esc(x.label):'')+'</td>'
+      +'<td>'+fmtDate(dOf(x.date))+'</td>'
+      +'<td class="r">'+(x.hours!=null?x.hours.toFixed(1):'—')+'</td>'
+      +'<td class="r">'+x.loads+'</td>'
+      +'<td class="r">'+fmtT(x.tonnes)+'</td>'
+      +'<td class="r">'+n0(x.tph)+'</td>'
+      +'<td class="r">'+(x.delay?fmtDur(x.delay):'—')+'</td>'
+      +'<td class="r">'+(x.rom==null?'—':fmtT(x.rom))+'</td>'
+      +'<td class="r">'+(x.cos==null?'—':fmtT(x.cos))+'</td>'
+      +'<td class="r">'+(g==null?'—':(g>=0?'+':'−')+fmtT(Math.abs(g)))+'</td>'
+      +'<td>'+(x.byOre?ORES.filter(o=>x.byOre[o.k]).map(o=>o.k[0]+' '+fmtT(x.byOre[o.k])).join(' / '):'—')+'</td></tr>';
+  }).join('');
 }
 
 function renderLog(){
@@ -959,6 +1088,30 @@ function renderReconChart(r){
 }
 
 /* The watcher's view: rate first, then totals, then the detail below. */
+/* The shift before this one, sitting under the live numbers, so a rate has something to
+   be read against. It comes from the database with active_shift, so a watcher that has
+   never logged anything still sees it. */
+function renderPrev(st){
+  const box=$('#dPrev'), r=prevShift;
+  if(!r||!r.started_at){box.hidden=true;return}
+  box.hidden=false;
+  const which=primary();
+  const t=+(r[which+'_tonnes']||0), n=+(r[which+'_loads']||0), dly=+(r[which+'_delay_ms']||0);
+  const a=Date.parse(r.started_at);
+  const b=r.ended_at?Date.parse(r.ended_at):(r.last_load?Date.parse(r.last_load):null);
+  const hrs=(b&&b>a)?(b-a)/3600000:null;
+  $('#dPrevWhen').textContent=r.shift_name+' '+fmtDate(dOf(r.shift_date))+(r.label?' · '+r.label:'');
+  $('#pTonnes').textContent=fmtT(t);
+  $('#pLoads').textContent=n;
+  $('#pTph').textContent=(hrs>0)?n0(t/hrs):'—';
+  $('#pDelay').textContent=dly?fmtDur(dly):'none';
+  const dBox=$('#pDeltaBox'), dEl=$('#pDelta');
+  const gap=(st.proj!=null&&t>0)?st.proj-t:null;
+  dEl.textContent=gap==null?'—':(gap>=0?'+':'−')+fmtT(Math.abs(gap));
+  dBox.classList.toggle('up',gap!=null&&gap>=0);
+  dBox.classList.toggle('down',gap!=null&&gap<0);
+}
+
 function renderDash(){
   if(!viewing())return;
   const st=stats(), f=S.fleet, tgt=f.targetTph>0, src=S.source||{};
@@ -1005,6 +1158,8 @@ function renderDash(){
   $('#dUtil').textContent=st.elapsed>0?pct(st.util):'—';
   $('#dDelay').textContent=st.delay?fmtDur(st.delay):(S.shift.startedAt?'none':'—');
   $('#dSince').textContent=st.sinceLast==null?'—':fmtDur(st.sinceLast);
+
+  renderPrev(st);
 
   const bar=$('#dProg'), pace=$('#dPace'), need=$('#dNeed');
   if(!S.shift.startedAt||!st.planMs){bar.innerHTML='';pace.textContent='';need.textContent='';return}
@@ -1055,10 +1210,12 @@ function renderAll(){renderShiftControls();renderOre();renderFleet();renderDelay
 /* Actions */
 let locked=false, flashTimer=null;
 function tip(){
-  if(locked||S.shift.endedAt||viewing())return;
+  if(locked||viewing())return;
+  if(rollShift())renderAll();                  /* a tip past 06:30 or 18:30 opens the new shift */
+  if(S.shift.endedAt)return;
   locked=true;
   const t=now();
-  if(!S.shift.startedAt)S.shift.startedAt=t;
+  if(!S.shift.startedAt){S.shift.startedAt=shiftStart(t);S.shift.key=shiftKey(t)}
   const od=openDelay();if(od)od.t1=t;
   S.loads.push({id:uid(),t,ore:S.ore,tonnes:tPerLoad(),trucks:S.fleet.trucks,exc:S.fleet.excavators,ldr:S.fleet.loaders});
   save();
@@ -1087,20 +1244,53 @@ function delDelay(i){
   save();renderAll();
 }
 
-function startShift(){if(S.shift.startedAt)return;S.shift.startedAt=now();save();renderAll()}
-function endShift(){if(!S.shift.startedAt||S.shift.endedAt)return;if(!confirm('End this shift? Tipping stops until you start a new one.'))return;const t=now();const od=openDelay();if(od)od.t1=t;S.shift.endedAt=t;save();renderAll()}
-function newShift(){
+function startShift(){if(S.shift.startedAt)return;S.shift.startedAt=shiftStart();S.shift.key=shiftKey();save();renderAll()}
+function endShift(){if(!S.shift.startedAt||S.shift.endedAt)return;if(!confirm('End this shift? Tipping stops until the next changeover, or until you start a shift by hand.'))return;const t=now();const od=openDelay();if(od)od.t1=t;S.shift.endedAt=t;save();renderAll()}
+
+/* File the shift on the deck into this device's own history and push it one last time. */
+function archiveShift(){
   const st=stats();
   if(S.loads.length){
-    const last=S.loads[S.loads.length-1];
-    S.history.push({id:S.shift.startedAt,label:S.shift.label||'',startedAt:S.shift.startedAt,endedAt:endT(),loads:st.n,tonnes:Math.round(st.cum*10)/10,tph:st.tphShift,tphOp:st.tphOp,delay:st.delay,byOre:Object.fromEntries(Object.entries(st.byOre).map(([k,v])=>[k,Math.round(v.t*10)/10])),trucks:last.trucks,exc:last.exc,ldr:last.ldr});
+    const last=S.loads[S.loads.length-1], sk=keyOf(S.shift);
+    S.history.push({id:S.shift.startedAt,label:S.shift.label||'',key:sk,startedAt:S.shift.startedAt,endedAt:endT(),loads:st.n,tonnes:Math.round(st.cum*10)/10,tph:st.tphShift,tphOp:st.tphOp,delay:st.delay,byOre:Object.fromEntries(Object.entries(st.byOre).map(([k,v])=>[k,Math.round(v.t*10)/10])),trucks:last.trucks,exc:last.exc,ldr:last.ldr});
     if(S.history.length>60)S.history=S.history.slice(-60);
   }
   if(party()&&S.shift.id&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
+}
+
+function newShift(){
+  archiveShift();
   S.shift={label:'',startedAt:null,endedAt:null};
   S.loads=[];
   S.delays=[];
   save();renderAll();
+}
+
+/* Shifts change over at 06:30 and 18:30 on their own, so nobody has to remember the tap
+   that files one shift and opens the next. The old shift is closed at the changeover
+   instant rather than at whenever the app next woke up, and anything stamped after that
+   instant — a device asleep across the boundary, a queue draining late — moves across to
+   the new shift instead of being counted against the old one. */
+function rollShift(){
+  if(viewing()||!S.shift.startedAt)return false;
+  if(sameKey(keyOf(S.shift),shiftKey()))return false;
+  const b=shiftStart();
+  if(b<=S.shift.startedAt)return false;        /* clock jumped backwards: leave it alone */
+  const carry=S.loads.filter(l=>l.t>=b);
+  S.loads=S.loads.filter(l=>l.t<b);
+  const od=openDelay();
+  let carryDelay=null;
+  if(od){
+    if(od.t0>=b){S.delays=S.delays.filter(d=>d!==od);carryDelay=od}
+    else{od.t1=b;carryDelay={id:uid(),t0:b,t1:null,reason:od.reason}}
+  }
+  if(!S.shift.endedAt)S.shift.endedAt=b;
+  archiveShift();                              /* pushes the closed shift before the deck clears */
+  S.shift={id:uid(),label:'',startedAt:b,endedAt:null,key:shiftKey(b)};
+  S.loads=carry;
+  S.delays=carryDelay?[carryDelay]:[];
+  save();
+  return true;
 }
 function undo(){if(!S.loads.length||S.shift.endedAt)return;S.loads.pop();save();renderAll()}
 function del(i){if(!confirm('Delete load '+(i+1)+'?'))return;S.loads.splice(i,1);save();renderAll()}
@@ -1196,6 +1386,9 @@ $('#restoreBtn').addEventListener('click',()=>$('#restoreFile').click());
 $('#restoreFile').addEventListener('change',e=>{const f=e.target.files[0];if(f)restore(f);e.target.value=''});
 $('#delayEnd').addEventListener('click',endDelay);
 $('#syncChips').addEventListener('click',e=>{const b=e.target.closest('[data-role]');if(b)setRole(b.dataset.role)});
+$('#histFrom').addEventListener('change',e=>{histFrom=e.target.value||'';renderHist();pullHistory(true)});
+$('#histTo').addEventListener('change',e=>{histTo=e.target.value||'';renderHist();pullHistory(true)});
+$('#histClear').addEventListener('click',()=>{histFrom='';histTo='';$('#histFrom').value='';$('#histTo').value='';renderHist();pullHistory(true)});
 window.addEventListener('online',()=>{if(party())drain();if(viewing())pull()});
 $('#delayChips').addEventListener('click',e=>{const b=e.target.closest('[data-reason]');if(b)startDelay(b.dataset.reason)});
 $('#delayBody').addEventListener('click',e=>{const b=e.target.closest('[data-ddel]');if(b)delDelay(+b.dataset.ddel)});
@@ -1235,13 +1428,14 @@ document.addEventListener('keydown',e=>{if(e.code==='Space'&&!modalOpen()&&!/INP
 $('#storeNote').textContent=store.ok?'Log is saved on this device and survives a refresh.':'Browser storage is off here, so a refresh will clear the log. Export CSV before you close.';
 
 document.body.dataset.role=role;
+rollShift();   /* a device asleep across a changeover files the old shift as soon as it wakes */
 if(synced()){pull();pollTimer=setInterval(()=>{if(!document.hidden)pull()},viewing()?8000:20000)}
 if(party()&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
 renderAll();
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))
   navigator.serviceWorker.register('sw.js').catch(()=>{});
-setInterval(()=>{renderClock();renderPace();renderSync();renderDash();if(now()-lastChart>60000){renderCharts();renderDelayLog()}},1000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(viewing())pull();else renderAll()}});
+setInterval(()=>{if(rollShift())renderAll();renderClock();renderPace();renderSync();renderDash();if(now()-lastChart>60000){renderCharts();renderDelayLog()}},1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){rollShift();if(viewing())pull();else renderAll()}});
 })();
 </script>
 </body>
