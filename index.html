@@ -446,6 +446,11 @@ const KEY='tipm8.v1';
 const ORES=[{k:'Kopra',c:'#7DD3FF'},{k:'Toka',c:'#7EE0A6'},{k:'Marawuwung',c:'#C4A6FF'},{k:'Araren',c:'#FF8DA1'}];
 const oreColor=k=>(ORES.find(o=>o.k===k)||{c:'#8A9BAE'}).c;
 const REASONS=['No trucks','Crusher','Screen','Loader down','Blast','Weather','Shift change','Meal','Other'];
+/* Passcode on the two logging roles. Off and Watching stay open, so anyone can be handed
+   the link to watch a shift, and only someone with the code can start writing trucks
+   into it. Change it here and redeploy. It is in the page source like everything else,
+   so it stops a wrong tap rather than a determined person. */
+const LOG_PIN='1234';
 const DEF={shift:{label:'',startedAt:null,endedAt:null},fleet:{payload:30,fill:0.9,trucks:6,excavators:2,loaders:2,targetTph:0,shiftHours:12},ore:ORES[0].k,loads:[],delays:[],history:[]};
 let S=(()=>{try{const r=store.get(KEY);if(r){const o=JSON.parse(r);
   return{shift:{...DEF.shift,...(o.shift||{})},fleet:{...DEF.fleet,...(o.fleet||{})},ore:o.ore||DEF.ore,loads:o.loads||[],delays:o.delays||[],history:o.history||[]}}}catch(e){}
@@ -497,9 +502,8 @@ const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const uid=()=>(self.crypto&&crypto.randomUUID)?crypto.randomUUID()
   :'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
      const r=Math.random()*16|0;return (c==='x'?r:(r&3|8)).toString(16)});
+const urlParty=(location.search.match(/[?&]party=(rom|cos)/)||[])[1]||null;  /* bookmarkable per-device setup */
 let role=(()=>{
-  const q=(location.search.match(/[?&]party=(rom|cos)/)||[])[1];   /* bookmarkable per-device setup */
-  if(q){store.set(ROLE_KEY,q);return q}
   const r=store.get(ROLE_KEY)||'off';
   return r==='logger'?'cos':r;                                     /* the old single-party role */
 })();
@@ -639,8 +643,19 @@ async function pullHistory(force){
   finally{histBusy=false}
 }
 
+/* Asked on the way into ROM pad or COS, however that was reached: the header chips or a
+   ?party= bookmark. Nothing changes unless the code is right, so a failed try leaves the
+   device exactly where it was. */
+function askPin(r){
+  const v=prompt('Passcode to log as '+PARTIES[r].label+':');
+  if(v==null)return false;                       /* cancelled */
+  if(String(v).trim()!==LOG_PIN){alert('Wrong passcode. Nothing changed — this device is still '+(role==='viewer'?'Watching':role==='off'?'Off':PARTIES[role].label)+'.');return false}
+  return true;
+}
+
 function setRole(r){
   if(r===role)return;
+  if((r==='rom'||r==='cos')&&!askPin(r))return;
   if(r==='viewer'&&!viewing())stash=S;                  /* park this device's own log */
   if(r!=='viewer'&&viewing()&&stash){S=stash;stash=null}
   role=r;store.set(ROLE_KEY,r);
@@ -1432,6 +1447,8 @@ rollShift();   /* a device asleep across a changeover files the old shift as soo
 if(synced()){pull();pollTimer=setInterval(()=>{if(!document.hidden)pull()},viewing()?8000:20000)}
 if(party()&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
 renderAll();
+/* deferred so the page paints before the passcode dialog, rather than booting into it */
+if(urlParty&&urlParty!==role)setTimeout(()=>setRole(urlParty),0);
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))
   navigator.serviceWorker.register('sw.js').catch(()=>{});
 setInterval(()=>{if(rollShift())renderAll();renderClock();renderPace();renderSync();renderDash();if(now()-lastChart>60000){renderCharts();renderDelayLog()}},1000);

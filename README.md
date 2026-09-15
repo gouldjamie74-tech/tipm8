@@ -80,7 +80,8 @@ header, and Off is the default:
   Only one device per party should be logging; nothing enforces that.
 
 `?party=rom` and `?party=cos` set the role from the URL, so each device can be set up
-from a bookmark rather than a menu.
+from a bookmark rather than a menu. The bookmark asks for the passcode too — otherwise
+the passcode would be one URL away.
 - **Watching** — a dashboard rather than the logger's screen, read only, polling every 8
   seconds while the tab is visible. The device's own log is parked while it watches and
   comes back when you switch off.
@@ -180,11 +181,30 @@ recreates it, new row id and all. Move the device off the shift first — a chan
 this on its own now — and delete afterwards.
 
 ### Access
-The Supabase publishable key ships in the page, as it is designed to. It is not the
-gate: anyone holding it can read and write these three tables, so **the site must stay
-behind the Netlify site password**. Turn it on under Project configuration → Access &
-security → Visitor access → Password protection. Nothing else in the project is exposed
-by that key — no auth, no schema, no other tables.
+Watching is open; logging is not. Choosing **ROM pad** or **COS** asks for a four-digit
+passcode, so the link can be handed to anyone who needs to watch a shift without them
+being able to write trucks into it. Off and Watching never ask. A wrong code changes
+nothing — the device stays on whatever role it already had.
+
+The passcode is `LOG_PIN` near the top of the script, next to `ORES` and `REASONS`, and
+ships as `1234`. Change it there and redeploy; every device picks it up on next load.
+
+**Be clear about what that does and does not stop.** It stops a wrong tap and a borrowed
+iPad. It is not a security boundary: the code sits in the page source, like the Supabase
+publishable key beside it. Anyone willing to read the source or call the API directly can
+still write, because the database itself still accepts writes from anyone holding that
+key — every RLS policy on the three tables is `true` for `anon`, which also holds direct
+INSERT, UPDATE, DELETE and TRUNCATE grants.
+
+So **the site must stay behind the Netlify site password**, which is the only real gate.
+Turn it on under Project configuration → Access & security → Visitor access → Password
+protection. Nothing else in the project is exposed by that key — no auth, no schema, no
+other tables.
+
+Making watch-only genuinely enforced would mean moving the check into the database:
+revoke `anon`'s table grants, make the three functions `SECURITY DEFINER`, and have
+`sync_party` require a token the watching devices do not hold. Then the publishable key
+would be read-only by construction. That has not been done.
 
 ## Offline and install
 `manifest.webmanifest` plus `sw.js` make the page installable to an iPad or phone home
