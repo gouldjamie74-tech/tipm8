@@ -161,6 +161,23 @@ Previous shifts table takes a From and To date, reports loads, tonnes, tph, dela
 ROM/COS gap per shift, and falls back to this device's own log when the page is offline
 or set to Off — the note under the date boxes says which of the two you are reading.
 
+### Looking back
+The trend chart plots **tonnes, tph, loads or delay** across the shifts in view, picked
+from the Trend box. Day and night are drawn in different colours and never merged: they
+are different crews on different rates, and a trend that blends them hides the comparison
+worth making.
+
+**View** on any row opens that shift — headline tonnes, count, tph, tph with delays
+excluded, utilisation and delay, then its **tonnes by hour**, its ore split and its delay
+log. The hourly profile is the useful part: a shift average tells you a night was slow,
+the profile tells you which two hours it happened in. Each hour is judged against the
+target tph, since an hour's tonnes is that hour's rate; the target line is only drawn when
+it fits on the scale, and the legend says so rather than claiming a line that is not there.
+
+It reads through `shift_detail(id)`, the same call the CSV export uses, so a shift can be
+opened from a device that never logged it — which is the point for anyone going over last
+night from the office in the morning.
+
 ### Shifts and reconciliation
 A shift is keyed on site, date and Day/Night — Day is 06:30 to 18:29 local and Night
 18:30 to 06:29, with the small hours belonging to the night that started the evening

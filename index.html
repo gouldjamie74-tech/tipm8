@@ -17,6 +17,7 @@
 :root{
   --bg:#0E141B; --surface:#151D26; --line:#243040; --text:#E8EEF4; --muted:#8A9BAE;
   --blue:#7DD3FF; --amber:#F5B335; --amber-ink:#1A1200; --red:#FF6B6B; --green:#7EE0A6;
+  --night:#C4A6FF;
   --sans:"Inter Tight",system-ui,-apple-system,sans-serif;
   --serif:"Fraunces",Georgia,serif;
   --mark:"Space Grotesk",system-ui,sans-serif;
@@ -156,6 +157,19 @@ body[data-role="viewer"] .dup{display:none}
 .histbar label{color:var(--muted);font-size:13px}
 .histbar input.text{flex:0 1 160px;min-width:140px;padding:8px 10px}
 .histbar .note{color:var(--muted);font-size:13px;flex-basis:100%}
+.histbar select.text{flex:0 1 150px;min-width:130px;padding:8px 10px}
+.hist-detail{border:1px solid var(--line);border-radius:10px;padding:16px;margin:14px 0;background:var(--surface)}
+.hist-detail[hidden]{display:none}
+.hd-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.hd-title{font-family:var(--serif);font-weight:500;font-size:22px;font-variation-settings:"opsz" 72;letter-spacing:-.01em}
+.hd-sub{color:var(--muted);font-size:13px;margin-top:3px}
+.hd-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:14px 18px;margin-bottom:6px}
+.hd-stats .v{font-family:var(--serif);font-weight:500;font-size:26px;font-variant-numeric:tabular-nums;line-height:1.05}
+.hd-stats .l{color:var(--muted);font-size:12px;margin-top:3px}
+.hd-stats .ok .v{color:var(--green)} .hd-stats .low .v{color:var(--amber)}
+tr.pick{cursor:pointer}
+tr.pick:hover td{background:rgba(125,211,255,.06)}
+tr.on td{background:rgba(125,211,255,.10)}
 .live-tag{color:var(--amber);font-size:12px}
 .rec-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:14px 18px}
 .rec-top .v{font-family:var(--serif);font-weight:500;font-size:32px;font-variation-settings:"opsz" 144;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.05}
@@ -393,13 +407,30 @@ tr.edit:hover td{background:var(--surface)}
     <div class="histbar">
       <label for="histFrom">From</label><input type="date" id="histFrom" class="text">
       <label for="histTo">To</label><input type="date" id="histTo" class="text">
+      <label for="histMetric">Trend</label>
+      <select id="histMetric" class="text">
+        <option value="tonnes">Tonnes</option>
+        <option value="tph">tph</option>
+        <option value="loads">Loads</option>
+        <option value="delay">Delay</option>
+      </select>
       <button class="link" id="histClear" type="button">Clear dates</button>
       <button class="link" id="histCsv" type="button">Export these shifts</button>
       <span class="note" id="histNote"></span>
     </div>
     <div class="chart">
-      <h3>Shift average tph</h3>
+      <h3 id="histChartTitle">Tonnes by shift</h3>
       <div id="c-hist"></div>
+    </div>
+    <div class="hist-detail" id="histDetail" hidden>
+      <div class="hd-head">
+        <div><div class="hd-title" id="hdTitle">—</div><div class="hd-sub" id="hdSub"></div></div>
+        <button class="link" id="hdClose" type="button">Close</button>
+      </div>
+      <div class="hd-stats" id="hdStats"></div>
+      <div class="chart"><h3>Tonnes by hour</h3><div id="hdHours"></div></div>
+      <div id="hdSplit"></div>
+      <div id="hdDelays"></div>
     </div>
     <div class="tbl">
     <table>
@@ -522,6 +553,7 @@ const synced=()=>role!=='off';
 let stash=null, pending={}, pushing=false, pushTimer=null, pollTimer=null;
 let lastPush=null, lastPull=null, syncErr=null, syncRejected=false;
 let prevShift=null, histRows=[], histAt=null, histBusy=false, histFrom='', histTo='';
+let histMetric='tonnes', openShift=null, openBusy=false;
 const viewing=()=>role==='viewer';
 const sbHeaders=()=>({'apikey':SB.key,'Authorization':'Bearer '+SB.key,'Content-Type':'application/json'});
 const iso=t=>t?new Date(t).toISOString():null;
@@ -998,6 +1030,113 @@ function histUnified(){
 }
 const histFiltered=()=>histUnified().filter(x=>(!histFrom||x.date>=histFrom)&&(!histTo||x.date<=histTo));
 
+/* What the trend chart is plotting. Delay reads in minutes because a shift's delay in
+   milliseconds is unreadable and in hours is mostly decimal places. */
+const METRICS={
+  tonnes:{label:'Tonnes by shift', axis:v=>fmtT(v),      get:x=>x.tonnes},
+  tph:   {label:'Shift average tph',axis:v=>Math.round(v),get:x=>x.tph},
+  loads: {label:'Loads by shift',   axis:v=>Math.round(v),get:x=>x.loads},
+  delay: {label:'Delay by shift',   axis:v=>Math.round(v)+'m',get:x=>(x.delay||0)/60000}
+};
+
+/* Open a finished shift and look at its shape, not just its totals. The rows come from
+   shift_detail, so this works on a device that never logged the shift — which is the
+   whole point for anyone reviewing a night from the office the next morning. */
+async function viewShift(id){
+  if(!id||openBusy)return;
+  if(openShift&&openShift.id===id){closeShift();return}
+  openBusy=true;renderHist();
+  try{
+    const r=await fetch(SB.url+'/rest/v1/rpc/shift_detail',
+      {method:'POST',headers:sbHeaders(),body:JSON.stringify({p_id:id})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    if(!d||!d.shift)throw new Error('that shift is no longer in the database');
+    openShift={id,shift:d.shift,loads:d.loads||[],delays:d.delays||[]};
+  }catch(e){openShift=null;alert('Could not open that shift: '+(e.message||'no connection'))}
+  openBusy=false;renderHist();renderShiftDetail();
+}
+function closeShift(){openShift=null;renderHist();renderShiftDetail()}
+
+function renderShiftDetail(){
+  const box=$('#histDetail'), o=openShift;
+  if(!o){box.hidden=true;return}
+  box.hidden=false;
+  const sh=o.shift, which=primary(), other=which==='rom'?'cos':'rom';
+  const mine=o.loads.filter(l=>(l.party==='rom'?'rom':'cos')===which);
+  const theirs=o.loads.filter(l=>(l.party==='rom'?'rom':'cos')===other);
+  const a=Date.parse(sh.started_at);
+  const b=sh.ended_at?Date.parse(sh.ended_at):(o.loads.length?Math.max(...o.loads.map(l=>Date.parse(l.logged_at))):a);
+  const ms=Math.max(0,b-a), hrs=ms/3600000;
+  const t=mine.reduce((x,l)=>x+(+l.tonnes||0),0);
+  const dly=o.delays.filter(d=>(d.party==='rom'?'rom':'cos')===which&&d.ended_at)
+    .reduce((x,d)=>x+(Date.parse(d.ended_at)-Date.parse(d.started_at)),0);
+  const oper=Math.max(0,ms-dly);
+  const tph=hrs>0?t/hrs:null, tphOp=oper>60000?t/(oper/3600000):null;
+  const tgt=parseFloat(sh.target_tph)||0;
+
+  $('#hdTitle').textContent=sh.shift_name+' shift, '+fmtDate(dOf(sh.shift_date))+(sh.label?' · '+sh.label:'');
+  $('#hdSub').textContent=fmtTime(a)+' to '+(sh.ended_at?fmtTime(b):'still running')
+    +' · '+hrs.toFixed(1)+' h'+(sh.device?' · logged by '+sh.device:'');
+
+  const cls=v=>tgt>0&&v!=null?(v>=tgt?' ok':' low'):'';
+  $('#hdStats').innerHTML=[
+    ['<div class="v">'+fmtT(t)+'</div><div class="l">tonnes</div>',''],
+    ['<div class="v">'+mine.length+'</div><div class="l">'+P().many+'</div>',''],
+    ['<div class="v">'+n0(tph)+'</div><div class="l">tph</div>',cls(tph)],
+    ['<div class="v">'+n0(tphOp)+'</div><div class="l">tph, delays excluded</div>',cls(tphOp)],
+    ['<div class="v">'+(ms>0?pct(oper/ms):'—')+'</div><div class="l">utilisation</div>',''],
+    ['<div class="v">'+(dly?fmtDur(dly):'none')+'</div><div class="l">delay</div>',''],
+    ['<div class="v">'+(tgt>0?n0(tgt):'—')+'</div><div class="l">target tph</div>','']
+  ].map(([h,c])=>'<div class="stat'+c+'">'+h+'</div>').join('');
+
+  /* Hourly profile — where a shift actually lost its rate, which a shift average hides. */
+  const nH=Math.max(1,Math.ceil(hrs-0.0001)), buckets=new Array(nH).fill(0);
+  mine.forEach(l=>{const i=Math.floor((Date.parse(l.logged_at)-a)/3600000);
+    if(i>=0&&i<nH)buckets[i]+=(+l.tonnes||0)});
+  const {max,step}=niceMax(Math.max(...buckets,1));
+  /* An hour's tonnes is that hour's rate, so the tph target is the right line to judge
+     each bar against. It is only drawn when it fits on the scale — a target several times
+     the actual would flatten every bar to nothing — and the legend follows the line rather
+     than claiming one that is not there. */
+  const onScale=tgt>0&&tgt<=max;
+  let g=svgOpen()+yGrid(max,step,v=>fmtT(v));
+  if(onScale){const y=PT+IH-tgt/max*IH;
+    g+=`<line x1="${PL}" x2="${W-PR}" y1="${y}" y2="${y}" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="5 4"/>`}
+  const bw=IW/nH, gap=Math.min(8,bw*0.22);
+  buckets.forEach((v,i)=>{
+    const hh=Math.min(v,max)/max*IH, X=PL+i*bw+gap/2;
+    const low=tgt>0&&v<tgt;
+    g+=`<rect x="${X}" y="${PT+IH-hh}" width="${Math.max(1,bw-gap)}" height="${hh}" rx="2" fill="${low?'var(--amber)':'var(--blue)'}" opacity=".85"/>`;
+    if(nH<=14||i%2===0)g+=`<text x="${X+(bw-gap)/2}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${pad(new Date(a+i*3600000).getHours())}</text>`;
+  });
+  $('#hdHours').innerHTML=g+'</svg>'
+    +'<div class="legend"><span><i class="bar"></i>at or above target</span>'
+    +'<span><i class="bar" style="background:var(--amber)"></i>under target</span>'
+    +(onScale?'<span><i class="tgt"></i>target, '+n0(tgt)+' t/h</span>'
+      :tgt>0?'<span>target '+n0(tgt)+' t/h, above every hour</span>':'')+'</div>';
+
+  /* Ore split, and the other party alongside when both logged. */
+  const byOre={};mine.forEach(l=>{const k=l.ore||'—';byOre[k]=(byOre[k]||0)+(+l.tonnes||0)});
+  const keys=Object.keys(byOre).filter(k=>byOre[k]>0);
+  $('#hdSplit').innerHTML=(!keys.length?'':
+     '<h3>Ore split</h3><div class="tbl"><table><thead><tr><th>Ore</th><th class="r">Tonnes</th><th class="r">Share</th></tr></thead><tbody>'
+     +keys.map(k=>`<tr><td><span style="color:${oreColor(k)}">${esc(k)}</span></td>`
+       +`<td class="r">${fmtT(byOre[k])}</td><td class="r">${pct(byOre[k]/t)}</td></tr>`).join('')
+     +'</tbody></table></div>')
+   +(theirs.length?'<p class="note" style="color:var(--muted);font-size:13px">'
+     +PARTIES[other].label+' logged '+theirs.length+' '+PARTIES[other].many+', '
+     +fmtT(theirs.reduce((x,l)=>x+(+l.tonnes||0),0))+' t on the same shift.</p>':'');
+
+  const ds=o.delays.filter(d=>(d.party==='rom'?'rom':'cos')===which);
+  $('#hdDelays').innerHTML=!ds.length?'':'<h3>Delays</h3><div class="tbl"><table>'
+    +'<thead><tr><th>Reason</th><th>From</th><th>To</th><th class="r">Length</th></tr></thead><tbody>'
+    +ds.map(d=>{const x=Date.parse(d.started_at), y=d.ended_at?Date.parse(d.ended_at):null;
+      return `<tr><td>${esc(d.reason||'—')}</td><td>${fmtTime(x)}</td>`
+        +`<td>${y?fmtTime(y):'still open'}</td><td class="r">${y?fmtDur(y-x):'—'}</td></tr>`}).join('')
+    +'</tbody></table></div>';
+}
+
 function renderHist(){
   const el=$('#c-hist'), tb=$('#histBody'), note=$('#histNote');
   const rows=histFiltered(), ranged=!!(histFrom||histTo), COLS=12;
@@ -1013,19 +1152,29 @@ function renderHist(){
     tb.innerHTML='<tr><td colspan="'+COLS+'" class="empty">'+m+'</td></tr>';
     return;
   }
+  const M=METRICS[histMetric]||METRICS.tonnes;
+  $('#histChartTitle').textContent=M.label;
   const h=rows.slice(0,12).slice().reverse();   /* chart reads oldest to newest */
-  const {max,step}=niceMax(Math.max(...h.map(x=>x.tph||0)));
-  let s=svgOpen()+yGrid(max,step,v=>Math.round(v));
+  const {max,step}=niceMax(Math.max(...h.map(x=>M.get(x)||0)));
+  let s=svgOpen()+yGrid(max,step,M.axis);
   const bw=IW/h.length, gap=Math.min(10,bw*0.25);
+  /* Day and night are different animals — different crews, different light, different
+     rates — so a trend that blends them hides the thing worth seeing. */
   h.forEach((x,i)=>{
-    const hh=Math.min(x.tph||0,max)/max*IH, X=PL+i*bw+gap/2;
-    s+=`<rect x="${X}" y="${PT+IH-hh}" width="${Math.max(1,bw-gap)}" height="${hh}" rx="2" fill="var(--blue)" opacity=".85"/>`;
+    const v=M.get(x)||0, hh=Math.min(v,max)/max*IH, X=PL+i*bw+gap/2;
+    const fill=x.name==='Night'?'var(--night)':'var(--blue)';
+    s+=`<rect x="${X}" y="${PT+IH-hh}" width="${Math.max(1,bw-gap)}" height="${hh}" rx="2" fill="${fill}" opacity="${openShift&&openShift.id===x.id?'1':'.85'}"/>`;
     s+=`<text x="${X+(bw-gap)/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(x.name[0]+' '+fmtDate(dOf(x.date)))}</text>`;
   });
-  el.innerHTML=s+'</svg>';
+  el.innerHTML=s+'</svg>'
+    +'<div class="legend"><span><i class="bar"></i>Day</span>'
+    +'<span><i class="bar" style="background:var(--night)"></i>Night</span></div>';
+  renderShiftDetail();
   tb.innerHTML=rows.map(x=>{
     const g=(x.rom!=null&&x.cos!=null)?x.rom-x.cos:null;
-    return '<tr><td>'+esc(x.name)+(x.open?' <span class="live-tag">live</span>':'')
+    const on=openShift&&openShift.id===x.id;
+    return '<tr class="'+(x.id?'pick':'')+(on?' on':'')+'"'+(x.id?' data-view="'+x.id+'"':'')+'><td>'
+        +esc(x.name)+(x.open?' <span class="live-tag">live</span>':'')
         +(x.label?' · '+esc(x.label):'')+'</td>'
       +'<td>'+fmtDate(dOf(x.date))+'</td>'
       +'<td class="r">'+(x.hours!=null?x.hours.toFixed(1):'—')+'</td>'
@@ -1037,7 +1186,8 @@ function renderHist(){
       +'<td class="r">'+(x.cos==null?'—':fmtT(x.cos))+'</td>'
       +'<td class="r">'+(g==null?'—':(g>=0?'+':'−')+fmtT(Math.abs(g)))+'</td>'
       +'<td>'+(x.byOre?ORES.filter(o=>x.byOre[o.k]).map(o=>o.k[0]+' '+fmtT(x.byOre[o.k])).join(' / '):'—')+'</td>'
-      +'<td>'+(x.id?'<button type="button" class="link" data-csv="'+x.id+'">CSV</button>':'')+'</td></tr>';
+      +'<td>'+(x.id?'<button type="button" class="link" data-view="'+x.id+'">View</button>'
+                    +' <button type="button" class="link" data-csv="'+x.id+'">CSV</button>':'')+'</td></tr>';
   }).join('');
 }
 
@@ -1509,7 +1659,12 @@ $('#histFrom').addEventListener('change',e=>{histFrom=e.target.value||'';renderH
 $('#histTo').addEventListener('change',e=>{histTo=e.target.value||'';renderHist();pullHistory(true)});
 $('#histClear').addEventListener('click',()=>{histFrom='';histTo='';$('#histFrom').value='';$('#histTo').value='';renderHist();pullHistory(true)});
 $('#histCsv').addEventListener('click',exportRangeCsv);
-$('#histBody').addEventListener('click',e=>{const b=e.target.closest('[data-csv]');if(b)exportShiftCsv(b.dataset.csv)});
+$('#histBody').addEventListener('click',e=>{
+  const c=e.target.closest('[data-csv]'); if(c){exportShiftCsv(c.dataset.csv);return}
+  const v=e.target.closest('[data-view]'); if(v)viewShift(v.dataset.view);
+});
+$('#hdClose').addEventListener('click',closeShift);
+$('#histMetric').addEventListener('change',e=>{histMetric=e.target.value;renderHist()});
 window.addEventListener('online',()=>{if(party())drain();if(viewing())pull()});
 $('#delayChips').addEventListener('click',e=>{const b=e.target.closest('[data-reason]');if(b)startDelay(b.dataset.reason)});
 $('#delayBody').addEventListener('click',e=>{const b=e.target.closest('[data-ddel]');if(b)delDelay(+b.dataset.ddel)});
