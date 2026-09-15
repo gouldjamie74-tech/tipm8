@@ -63,6 +63,26 @@ refresh, but it is per-device and per-browser, and clearing site data wipes it.
   shift history — to a file. **Restore JSON** reads one back, replacing what is on the
   device. That is the way to move a log between devices.
 - **Export CSV** gives one row per load, then the delay log, then a shift summary row.
+  This one is the current shift on *this* device, from local storage.
+
+### Getting shifts out as CSV
+For anyone who wants the numbers outside the app, Previous shifts exports from the shared
+log rather than from one device, so any shift can be pulled from any device — including
+one that never logged it.
+
+- **CSV** on a shift's row gives that shift in full: both parties' loads interleaved in
+  time, each with its party, sequence, ISO timestamp, local time, ore, tonnes, interval,
+  running total, fleet counts and the device that logged it. Then the delay log, then a
+  summary per party with the ROM-less-COS gap. Sequence, interval and running total are
+  counted **per party**, so a ROM row's interval is the time since the previous *ROM*
+  load, not since whatever happened to be logged in between.
+- **Export these shifts** gives one row per shift across whatever the date filter is
+  showing — hours, loads, tonnes, tph, delay, ROM and COS tonnes, gap and ore split. That
+  is the one for trending a month; the per-shift export is the one for auditing a shift.
+
+Files land as `tipm8-2026-09-14-day.csv` and `tipm8-shifts-<from>-to-<to>.csv`, so they
+sort by date on their own. `timestamp_iso` is the authoritative column; the `time` column
+beside it is local to whichever device did the export, for reading rather than for maths.
 
 ## Live sync and the two portals
 

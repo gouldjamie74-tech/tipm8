@@ -390,6 +390,7 @@ tr.edit:hover td{background:var(--surface)}
       <label for="histFrom">From</label><input type="date" id="histFrom" class="text">
       <label for="histTo">To</label><input type="date" id="histTo" class="text">
       <button class="link" id="histClear" type="button">Clear dates</button>
+      <button class="link" id="histCsv" type="button">Export these shifts</button>
       <span class="note" id="histNote"></span>
     </div>
     <div class="chart">
@@ -398,7 +399,7 @@ tr.edit:hover td{background:var(--surface)}
     </div>
     <div class="tbl">
     <table>
-      <thead><tr><th>Shift</th><th>Date</th><th class="r">Hours</th><th class="r">Loads</th><th class="r">Tonnes</th><th class="r">tph</th><th class="r">Delay</th><th class="r">ROM</th><th class="r">COS</th><th class="r">Gap t</th><th>Ore split</th></tr></thead>
+      <thead><tr><th>Shift</th><th>Date</th><th class="r">Hours</th><th class="r">Loads</th><th class="r">Tonnes</th><th class="r">tph</th><th class="r">Delay</th><th class="r">ROM</th><th class="r">COS</th><th class="r">Gap t</th><th>Ore split</th><th></th></tr></thead>
       <tbody id="histBody"></tbody>
     </table>
     </div>
@@ -952,14 +953,14 @@ function histUnified(){
       :now();
     const hrs=(b&&b>a)?(b-a)/3600000:null;
     const t=+(r[which+'_tonnes']||0);
-    return{label:r.label||'',date:r.shift_date,name:r.shift_name,startedAt:a,hours:hrs,
+    return{id:r.id,label:r.label||'',date:r.shift_date,name:r.shift_name,startedAt:a,hours:hrs,
       loads:+(r[which+'_loads']||0),tonnes:t,tph:(hrs>0)?t/hrs:null,
       delay:+(r[which+'_delay_ms']||0),rom:+(r.rom_tonnes||0),cos:+(r.cos_tonnes||0),
       byOre:r[which+'_by_ore']||null,open:!r.ended_at};
   });
   return S.history.slice().reverse().map(x=>{
     const k=x.key||shiftKey(x.startedAt);
-    return{label:x.label||'',date:k.date,name:k.name,startedAt:x.startedAt,
+    return{id:null,label:x.label||'',date:k.date,name:k.name,startedAt:x.startedAt,
       hours:(x.endedAt-x.startedAt)/3600000,loads:x.loads,tonnes:x.tonnes,tph:x.tph,
       delay:x.delay,rom:null,cos:null,byOre:x.byOre||null,open:false};
   });
@@ -968,7 +969,7 @@ const histFiltered=()=>histUnified().filter(x=>(!histFrom||x.date>=histFrom)&&(!
 
 function renderHist(){
   const el=$('#c-hist'), tb=$('#histBody'), note=$('#histNote');
-  const rows=histFiltered(), ranged=!!(histFrom||histTo), COLS=11;
+  const rows=histFiltered(), ranged=!!(histFrom||histTo), COLS=12;
   note.textContent=!rows.length?''
     :rows.length+' shift'+(rows.length===1?'':'s')
      +(histRows.length?' from the shared log':' from this device only')
@@ -1004,7 +1005,8 @@ function renderHist(){
       +'<td class="r">'+(x.rom==null?'—':fmtT(x.rom))+'</td>'
       +'<td class="r">'+(x.cos==null?'—':fmtT(x.cos))+'</td>'
       +'<td class="r">'+(g==null?'—':(g>=0?'+':'−')+fmtT(Math.abs(g)))+'</td>'
-      +'<td>'+(x.byOre?ORES.filter(o=>x.byOre[o.k]).map(o=>o.k[0]+' '+fmtT(x.byOre[o.k])).join(' / '):'—')+'</td></tr>';
+      +'<td>'+(x.byOre?ORES.filter(o=>x.byOre[o.k]).map(o=>o.k[0]+' '+fmtT(x.byOre[o.k])).join(' / '):'—')+'</td>'
+      +'<td>'+(x.id?'<button type="button" class="link" data-csv="'+x.id+'">CSV</button>':'')+'</td></tr>';
   }).join('');
 }
 
@@ -1342,6 +1344,77 @@ function saveEdit(){
   closeEdit();save();renderAll();
 }
 
+/* Everything quoted, so an ore name or shift label with a comma cannot shift the columns. */
+const toCsv=rows=>rows.map(r=>r.map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(',')).join('\n');
+
+/* Any shift from the shared log, both streams in one file, read from the database rather
+   than local storage — so a shift can be exported from a device that never logged it,
+   which is the point for anyone asking for the numbers off the pad. */
+async function exportShiftCsv(id){
+  if(!id)return;
+  let d=null;
+  try{
+    const r=await fetch(SB.url+'/rest/v1/rpc/shift_detail',
+      {method:'POST',headers:sbHeaders(),body:JSON.stringify({p_id:id})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    d=await r.json();
+  }catch(e){alert('Could not fetch that shift: '+(e.message||'no connection'));return}
+  if(!d||!d.shift){alert('That shift is no longer in the database.');return}
+  const sh=d.shift, loads=d.loads||[], delays=d.delays||[];
+  const rows=[];
+  rows.push(['shift',sh.shift_date,sh.shift_name,sh.label||'']);
+  rows.push(['started',sh.started_at||'','ended',sh.ended_at||'']);
+  rows.push(['payload_t',sh.payload,'fill',sh.fill]);
+  rows.push(['target_tph',sh.target_tph,'shift_hours',sh.shift_hours]);
+  rows.push([]);
+  rows.push(['party','seq','timestamp_iso','time','ore','tonnes','interval_s','cumulative_t','trucks','excavators','loaders','device']);
+  const seq={rom:0,cos:0}, cum={rom:0,cos:0}, prev={rom:null,cos:null};
+  loads.forEach(l=>{
+    const p=l.party==='rom'?'rom':'cos', t=Date.parse(l.logged_at), tn=+l.tonnes||0;
+    seq[p]++; cum[p]+=tn;
+    rows.push([p,seq[p],l.logged_at,fmtTime(t),l.ore||'',tn,
+      prev[p]!=null?Math.round((t-prev[p])/1000):'',Math.round(cum[p]*10)/10,
+      l.trucks==null?'':l.trucks,l.excavators==null?'':l.excavators,l.loaders==null?'':l.loaders,
+      l.device||'']);
+    prev[p]=t;
+  });
+  if(delays.length){
+    rows.push([]);
+    rows.push(['party','delay','from_iso','from','to','reason','length_s']);
+    const dn={rom:0,cos:0};
+    delays.forEach(x=>{
+      const p=x.party==='rom'?'rom':'cos', a=Date.parse(x.started_at);
+      const b=x.ended_at?Date.parse(x.ended_at):null;
+      dn[p]++;
+      rows.push([p,dn[p],x.started_at,fmtTime(a),b?fmtTime(b):'still open',x.reason||'',
+        b?Math.round((b-a)/1000):'']);
+    });
+  }
+  const delayMs=p=>delays.filter(x=>(x.party==='rom'?'rom':'cos')===p&&x.ended_at)
+    .reduce((a,x)=>a+(Date.parse(x.ended_at)-Date.parse(x.started_at)),0);
+  rows.push([]);
+  rows.push(['summary','loads','tonnes','delay_s']);
+  ['rom','cos'].forEach(p=>rows.push([PARTIES[p].label,seq[p],Math.round(cum[p]*10)/10,Math.round(delayMs(p)/1000)]));
+  rows.push(['gap, ROM less COS',seq.rom-seq.cos,Math.round((cum.rom-cum.cos)*10)/10,'']);
+  download('tipm8-'+sh.shift_date+'-'+String(sh.shift_name||'').toLowerCase()+'.csv',toCsv(rows),'text/csv');
+}
+
+/* One row per shift across whatever the date filter is showing — for trending, rather
+   than the load-by-load detail a single shift's export gives. */
+function exportRangeCsv(){
+  const rows=histFiltered();
+  if(!rows.length){alert('No shifts in view to export.');return}
+  const out=[['shift_date','shift','hours','loads','tonnes','tph','delay_s','rom_tonnes','cos_tonnes','gap_t','ore_split']];
+  rows.slice().reverse().forEach(x=>out.push([
+    x.date,x.name,x.hours!=null?Math.round(x.hours*100)/100:'',x.loads,
+    Math.round(x.tonnes*10)/10,x.tph!=null?Math.round(x.tph):'',Math.round((x.delay||0)/1000),
+    x.rom==null?'':Math.round(x.rom*10)/10,x.cos==null?'':Math.round(x.cos*10)/10,
+    (x.rom!=null&&x.cos!=null)?Math.round((x.rom-x.cos)*10)/10:'',
+    x.byOre?ORES.filter(o=>x.byOre[o.k]).map(o=>o.k+' '+Math.round(x.byOre[o.k])).join(' / '):'']));
+  download('tipm8-shifts-'+(histFrom||rows[rows.length-1].date)+'-to-'+(histTo||rows[0].date)+'.csv',
+    toCsv(out),'text/csv');
+}
+
 function exportCsv(){
   const label=S.shift.label||'shift';
   const rows=[['shift','load','timestamp_iso','time','ore','tonnes','interval_s','cumulative_t','trucks','excavators','loaders']];
@@ -1356,11 +1429,8 @@ function exportCsv(){
   rows.push([]);
   rows.push(['summary','elapsed_s','delay_s','operating_s','tonnes','tph_elapsed','tph_operating','utilisation','','','']);
   rows.push([label,Math.round(st.elapsed/1000),Math.round(st.delay/1000),Math.round(st.oper/1000),Math.round(st.cum*10)/10,st.tphShift==null?'':Math.round(st.tphShift),st.tphOp==null?'':Math.round(st.tphOp),st.util==null?'':Math.round(st.util*100)/100,'','','']);
-  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download='tipm8-'+label.replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')+'-'+new Date().toISOString().slice(0,10)+'.csv';
-  document.body.appendChild(a);a.click();a.remove();
+  download('tipm8-'+label.replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')+'-'+new Date().toISOString().slice(0,10)+'.csv',
+    toCsv(rows),'text/csv');
 }
 function download(name,text,type){
   const a=document.createElement('a');
@@ -1404,6 +1474,8 @@ $('#syncChips').addEventListener('click',e=>{const b=e.target.closest('[data-rol
 $('#histFrom').addEventListener('change',e=>{histFrom=e.target.value||'';renderHist();pullHistory(true)});
 $('#histTo').addEventListener('change',e=>{histTo=e.target.value||'';renderHist();pullHistory(true)});
 $('#histClear').addEventListener('click',()=>{histFrom='';histTo='';$('#histFrom').value='';$('#histTo').value='';renderHist();pullHistory(true)});
+$('#histCsv').addEventListener('click',exportRangeCsv);
+$('#histBody').addEventListener('click',e=>{const b=e.target.closest('[data-csv]');if(b)exportShiftCsv(b.dataset.csv)});
 window.addEventListener('online',()=>{if(party())drain();if(viewing())pull()});
 $('#delayChips').addEventListener('click',e=>{const b=e.target.closest('[data-reason]');if(b)startDelay(b.dataset.reason)});
 $('#delayBody').addEventListener('click',e=>{const b=e.target.closest('[data-ddel]');if(b)delDelay(+b.dataset.ddel)});
