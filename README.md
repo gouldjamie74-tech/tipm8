@@ -37,6 +37,21 @@ stats shows how far through the shift you are; beside it, projected end-of-shift
 at the current operating rate, and the tph needed from here to land on target — green if
 the projection clears the goal, amber if it does not.
 
+**Tips per hour, rolling against required.** Tonnes per hour has to be divided by a
+payload in your head before it means anything standing on the pad, so the same pace is
+also given in tips: the rolling rate over the last 30 minutes, beside the rate needed from
+here to still land on the shift goal. The rolling figure turns amber the moment it drops
+under what is required, so being behind is visible without doing the arithmetic. The
+watcher's dashboard carries the same pair, and both read from one function, so the pad and
+the dashboard cannot disagree about whether the shift is behind.
+
+Required rises as you fall behind, because it is what it takes *from here* — not a flat
+target. Once there is no plan left to catch up over it falls back to the flat target rate,
+which is the only sensible answer at that point. Counted from the loads in the window
+rather than converted from tph, so correcting a tonnage in the load log cannot drag the
+rate away from the actual count. It needs five minutes of shift before it will show a
+rate at all, and a target before it will show anything to judge against.
+
 **Corrections.** Tap any row in the load log to fix its time, tonnage or ore source.
 Loads re-sort by time after an edit, so intervals and charts stay honest. Undo last tip
 drops the most recent one.
