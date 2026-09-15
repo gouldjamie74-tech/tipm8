@@ -9,3 +9,8 @@ node_modules/
 Thumbs.db
 .DS_Store
 .vscode/
+
+# Exports written into the project folder by the app itself — shift data, never committed
+tipm8-*.csv
+blendm8-*.csv
+tipm8-backup-*.json
