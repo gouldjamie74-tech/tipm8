@@ -181,7 +181,6 @@ tr.on td{background:rgba(125,211,255,.10)}
 .rec-strip b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
 .rec-strip .gap{color:var(--amber);font-weight:500}
 .rec-strip .gap.ok{color:var(--green)}
-body[data-role="off"] .synced{display:none}
 .sheet{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;width:100%;max-width:400px;max-height:88vh;overflow:auto}
 .sheet .f{margin-bottom:12px}
 .sheet label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
@@ -197,11 +196,11 @@ tr.edit:hover td{background:var(--surface)}
 <header>
   <div>
     <div class="mark">Tip<span>M8</span></div>
-    <div class="sub" id="tagline">COS tipping log</div>
+    <div class="sub" id="tagline">ROM pad to COS</div>
   </div>
   <div class="hd-sync">
     <div class="chips" id="syncChips" role="group" aria-label="Live sync"></div>
-    <div class="sync"><i class="dot" id="syncDot"></i><span id="syncNote">Off. This device keeps its log to itself.</span></div>
+    <div class="sync"><i class="dot" id="syncDot"></i><span id="syncNote">Connecting…</span></div>
   </div>
 </header>
 
@@ -539,9 +538,12 @@ const uid=()=>(self.crypto&&crypto.randomUUID)?crypto.randomUUID()
   :'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
      const r=Math.random()*16|0;return (c==='x'?r:(r&3|8)).toString(16)});
 const urlParty=(location.search.match(/[?&]party=(rom|cos)/)||[])[1]||null;  /* bookmarkable per-device setup */
+let offMigrated=false;
 let role=(()=>{
-  const r=store.get(ROLE_KEY)||'off';
-  return r==='logger'?'cos':r;                                     /* the old single-party role */
+  const r=store.get(ROLE_KEY)||'viewer';                           /* a fresh device watches */
+  if(r==='logger')return 'cos';                                    /* the old single-party role */
+  if(r==='off'){offMigrated=true;return 'viewer'}                  /* Off is gone, see below */
+  return r;
 })();
 const NOSTREAM=()=>({rom:{loads:[],delays:[]},cos:{loads:[],delays:[]},at:null});
 let remote=NOSTREAM();
@@ -549,8 +551,12 @@ const party=()=>role==='rom'||role==='cos'?role:null;
 const primary=()=>role==='rom'?'rom':'cos';   /* a watcher leads with what reached the plant */
 const other=()=>primary()==='rom'?'cos':'rom';
 const P=()=>PARTIES[primary()];
-const synced=()=>role!=='off';
+const synced=()=>true;   /* every role syncs now: parties push, watchers poll */
 let stash=null, pending={}, pushing=false, pushTimer=null, pollTimer=null;
+/* Off kept its log to itself and never sent it. Moving that device to Watching would let
+   the next pull replace S with the mirrored shift, so the local log is parked first and
+   comes back the moment a logging role is picked. */
+if(offMigrated){stash=S;store.set(ROLE_KEY,'viewer')}
 let lastPush=null, lastPull=null, syncErr=null, syncRejected=false;
 let prevShift=null, histRows=[], histAt=null, histBusy=false, histFrom='', histTo='';
 let histMetric='tonnes', openShift=null, openBusy=false;
@@ -686,7 +692,7 @@ async function pullHistory(force){
 function askPin(r){
   const v=prompt('Passcode to log as '+PARTIES[r].label+':');
   if(v==null)return false;                       /* cancelled */
-  if(String(v).trim()!==LOG_PIN){alert('Wrong passcode. Nothing changed — this device is still '+(role==='viewer'?'Watching':role==='off'?'Off':PARTIES[role].label)+'.');return false}
+  if(String(v).trim()!==LOG_PIN){alert('Wrong passcode. Nothing changed — this device is still '+(role==='viewer'?'Watching':PARTIES[role].label)+'.');return false}
   return true;
 }
 
@@ -854,8 +860,7 @@ function renderShiftControls(){
 /* The two portals are the same screen with the verbs swapped. */
 function renderParty(){
   const c=P();
-  $('#tagline').textContent=role==='off'?'COS tipping log'
-    :viewing()?'ROM pad to COS, reconciled'
+  $('#tagline').textContent=viewing()?'ROM pad to COS, reconciled'
     :c.who+' · '+c.label;
   $('#sinceLabel').textContent=c.since;
   $('#undoBtn').textContent=c.undo;
@@ -1146,8 +1151,7 @@ function renderHist(){
      +(ranged?', filtered by date':'');
   if(!rows.length){
     const m=ranged?'No shifts in that date range.'
-      :synced()?'Finished shifts land here once a changeover has happened.'
-      :'Finished shifts land here for shift-on-shift trends.';
+      :'Finished shifts land here once a changeover has happened.';
     el.innerHTML=emptyMsg(m);
     tb.innerHTML='<tr><td colspan="'+COLS+'" class="empty">'+m+'</td></tr>';
     return;
@@ -1376,16 +1380,13 @@ function renderDash(){
 }
 
 function renderSync(){
-  const chips=[['off','Off'],['rom','ROM pad'],['cos','COS'],['viewer','Watching']];
+  const chips=[['rom','ROM pad'],['cos','COS'],['viewer','Watching']];
   $('#syncChips').innerHTML=chips.map(([k,t])=>
     `<button type="button" data-role="${k}" aria-pressed="${role===k}">${t}</button>`).join('');
   const dot=$('#syncDot'), note=$('#syncNote'), hint=$('#syncHint');
   const queued=Object.keys(pending).length;
   dot.className='dot';
-  if(role==='off'){
-    note.textContent='Off. This device keeps its log to itself.';
-    hint.textContent='ROM pad logs material leaving, COS logs it arriving, Watching mirrors both and reconciles them.';
-  }else if(party()){
+  if(party()){
     if(syncErr&&queued){
       dot.classList.add(syncRejected?'err':'warn');
       note.textContent=syncRejected

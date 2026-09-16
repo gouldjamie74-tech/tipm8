@@ -107,9 +107,8 @@ project (`TipM8`, ap-southeast-1) with three tables — `shifts`, `loads`, `dela
 Two parties log the same trucks from opposite ends of the haul: mine geology as material
 leaves the ROM pad, process operations as it tips at the COS. Both write to one shift and
 the gap between them is reconciled. Each device picks a role from the toggle in the page
-header, and Off is the default:
+header, and **Watching is the default**:
 
-- **Off** — the device keeps its log to itself. Behaves exactly as it did before sync.
 - **ROM pad** — mine geology's portal. The button reads Load, totals read as dispatched.
 - **COS** — process operations' portal. The button reads Tip, totals read as delivered.
   Only one device per party should be logging; nothing enforces that.
@@ -119,7 +118,26 @@ from a bookmark rather than a menu. The bookmark asks for the passcode too — o
 the passcode would be one URL away.
 - **Watching** — a dashboard rather than the logger's screen, read only, polling every 8
   seconds while the tab is visible. The device's own log is parked while it watches and
-  comes back when you switch off.
+  comes back when you pick a logging role again.
+
+### There is no Off any more
+There used to be a fourth role, Off, which logged to the device and never synced. It was
+the default, and it was a trap. A pad whose storage is cleared comes back with no role
+stored, so it fell to Off — and on Off the sync strip was hidden, so the screen looked
+identical whether the shift was reaching the shared record or going nowhere. On the
+morning of 16 Sep an operator logged for ninety minutes into a device that was doing
+exactly that.
+
+Nothing was lost — the loads were on the device and went up the moment COS was picked —
+but nobody could see them, and nobody could have known why.
+
+Off is gone. A fresh or cleared device opens on **Watching**: read only, visibly doing
+nothing, rather than invisibly doing nothing. Logging is now a deliberate act — pick a
+party, enter the passcode. A device that was on Off keeps its log; it opens on Watching
+with that log parked, and picking a logging role hands it straight back.
+
+Off was never needed for working without signal, which is what people assume it was for.
+A logging role writes to the device first and queues, and says so in the status line.
 
 The watcher's dashboard leads with rate, because that is what someone glancing at it
 needs first: tph over the last 30 minutes, shift average, tonnes to COS and the target,
@@ -184,6 +202,15 @@ A shift is keyed on site, date and Day/Night — Day is 06:30 to 18:29 local and
 before. Both parties derive the same key
 from their own clock, so neither has to start a shift for the other, and a device whose
 storage is cleared rejoins the shift it left instead of forking a new one.
+
+**A shift inherits its settings from the shift before it**, and a device that is not
+contributing rows cannot overwrite them. Both come from the same morning: a wiped pad came
+back carrying factory defaults, synced an empty shift, and zeroed the target tph for
+everyone, because the upsert took the last writer's settings unconditionally. The rule now
+is that a device's payload, fill, fleet, target and shift hours are written to the shift
+only if that device is actually putting loads or delays into it. Otherwise the shift keeps
+what it has, and a brand new shift starts from the previous one rather than from whatever
+the first device to sync happened to be carrying.
 
 `sync_party` upserts a party's rows and prunes what that **device** deleted locally. The
 device scope matters: pruning by party alone meant a replacement iPad with an empty local
