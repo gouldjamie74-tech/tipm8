@@ -241,8 +241,9 @@ tr.edit:hover td{background:var(--surface)}
     <div class="stat" id="dTipsBox"><div class="v" id="dTips">—</div><div class="l" id="dTipsLabel">tips/h now</div></div>
     <div class="stat"><div class="v" id="dTipsNeed">—</div><div class="l" id="dTipsNeedLabel">tips/h needed</div></div>
     <div class="stat"><div class="v" id="dSince">—</div><div class="l">since last tip</div></div>
-    <div class="stat"><div class="v" id="dMilled">—</div><div class="l">t milled</div></div>
-    <div class="stat"><div class="v" id="dMillRate">—</div><div class="l">milled t/h</div></div>
+    <div class="stat"><div class="v" id="dMilled">—</div><div class="l">mill t/h, average</div></div>
+    <div class="stat"><div class="v" id="dMillTotal">—</div><div class="l">t milled, total</div></div>
+    <div class="stat"><div class="v" id="dMillRate">—</div><div class="l">tipped t/h, same hours</div></div>
     <div class="stat"><div class="v" id="dStock">—</div><div class="l">COS stock, tipped less milled</div></div>
   </div>
 
@@ -253,7 +254,8 @@ tr.edit:hover td{background:var(--surface)}
       <div class="stat"><div class="v" id="pLoads">—</div><div class="l">loads</div></div>
       <div class="stat"><div class="v" id="pTph">—</div><div class="l">tph average</div></div>
       <div class="stat"><div class="v" id="pDelay">—</div><div class="l">delay</div></div>
-      <div class="stat"><div class="v" id="pMilled">—</div><div class="l">milled</div></div>
+      <div class="stat"><div class="v" id="pMilled">—</div><div class="l">mill t/h</div></div>
+      <div class="stat"><div class="v" id="pMillTotal">—</div><div class="l">t milled</div></div>
       <div class="stat" id="pDeltaBox"><div class="v" id="pDelta">—</div><div class="l">projected vs last</div></div>
     </div>
   </div>
@@ -348,24 +350,25 @@ tr.edit:hover td{background:var(--surface)}
     <h2>Tipped against milled</h2>
     <div class="note" id="millTitle" style="margin:-4px 0 10px"></div>
     <div class="rec-top">
-      <div><div class="v" id="mMilled">—</div><div class="l">t milled</div><div class="s" id="mHours"></div></div>
-      <div><div class="v" id="mTipped">—</div><div class="l">t tipped to the COS</div><div class="s" id="mTippedNote"></div></div>
+      <div><div class="v" id="mMilled">—</div><div class="l">mill t/h, average</div><div class="s" id="mHours"></div></div>
+      <div><div class="v" id="mTotal">—</div><div class="l">t milled, total</div><div class="s" id="mTotalNote"></div></div>
+      <div><div class="v" id="mTipped">—</div><div class="l">tipped t/h, same hours</div><div class="s" id="mTippedNote"></div></div>
       <div class="gap" id="mStockBox"><div class="v" id="mStock">—</div><div class="l">COS stock, tipped less milled</div><div class="s" id="mStockNote"></div></div>
     </div>
     <div class="note" id="millNote"></div>
     <div class="chart">
       <h3>By hour</h3>
       <div id="c-mill"></div>
-      <div class="legend"><span><i class="bar"></i>tipped to the COS</span><span><i class="bar" style="background:var(--green)"></i>milled</span></div>
+      <div class="legend"><span><i class="bar"></i>tipped to the COS</span><span><i class="bar" style="background:var(--green)"></i>mill t/h</span><span><i style="background:var(--green)"></i>mill average</span></div>
     </div>
     <div class="chart">
-      <h3>Running total, over the hours milled</h3>
+      <h3>Running total, at the recorded mill rate</h3>
       <div id="c-millcum"></div>
-      <div class="legend"><span><i style="background:var(--blue)"></i>tipped</span><span><i style="background:var(--green)"></i>milled</span></div>
+      <div class="legend"><span><i style="background:var(--blue)"></i>tipped</span><span><i style="background:var(--green)"></i>mill</span></div>
     </div>
     <div class="tbl">
     <table class="mill">
-      <thead><tr><th>Hour</th><th class="r">Tipped t</th><th class="r">Milled t</th><th class="r">Difference</th><th class="r">Running</th></tr></thead>
+      <thead><tr><th>Hour</th><th class="r">Tipped t</th><th class="r">Mill t/h</th><th class="r">Difference</th><th class="r">Running</th></tr></thead>
       <tbody id="millBody"></tbody>
     </table>
     </div>
@@ -449,8 +452,9 @@ tr.edit:hover td{background:var(--surface)}
         <option value="tph">tph</option>
         <option value="loads">Loads</option>
         <option value="delay">Delay</option>
-        <option value="milled">Milled</option>
-        <option value="vsmill">Tipped vs milled</option>
+        <option value="milled">Mill t/h</option>
+        <option value="milledt">Milled t</option>
+        <option value="vsmill">Tipped vs mill t/h</option>
       </select>
       <button class="link" id="histClear" type="button">Clear dates</button>
       <button class="link" id="histCsv" type="button">Export these shifts</button>
@@ -473,7 +477,7 @@ tr.edit:hover td{background:var(--surface)}
     </div>
     <div class="tbl">
     <table>
-      <thead><tr><th>Shift</th><th>Date</th><th class="r">Hours</th><th class="r">Loads</th><th class="r">Tonnes</th><th class="r">tph</th><th class="r">Milled</th><th class="r">COS stock</th><th class="r">Delay</th><th class="r">ROM</th><th class="r">COS</th><th class="r">Gap t</th><th>Ore split</th><th></th></tr></thead>
+      <thead><tr><th>Shift</th><th>Date</th><th class="r">Hours</th><th class="r">Loads</th><th class="r">Tonnes</th><th class="r">tph</th><th class="r">Mill t/h</th><th class="r">Milled t</th><th class="r">COS stock</th><th class="r">Delay</th><th class="r">ROM</th><th class="r">COS</th><th class="r">Gap t</th><th>Ore split</th><th></th></tr></thead>
       <tbody id="histBody"></tbody>
     </table>
     </div>
@@ -1085,16 +1089,19 @@ const histFiltered=()=>histUnified().filter(x=>(!histFrom||x.date>=histFrom)&&(!
 
 /* What the trend chart is plotting. Delay reads in minutes because a shift's delay in
    milliseconds is unreadable and in hours is mostly decimal places. */
+const millAvg=x=>x.milledHours>0&&x.milled!=null?x.milled/x.milledHours:null;
+const tipAvg=x=>x.milledHours>0&&x.milledTipped!=null?x.milledTipped/x.milledHours:null;
 const METRICS={
   tonnes:{label:'Tonnes by shift', axis:v=>fmtT(v),      get:x=>x.tonnes},
   tph:   {label:'Shift average tph',axis:v=>Math.round(v),get:x=>x.tph},
   loads: {label:'Loads by shift',   axis:v=>Math.round(v),get:x=>x.loads},
   delay: {label:'Delay by shift',   axis:v=>Math.round(v)+'m',get:x=>(x.delay||0)/60000},
-  milled:{label:'Milled tonnes by shift',axis:v=>fmtT(v),get:x=>x.milled||0},
-  /* Tipped over the milled hours only, so a shift with half its hours entered compares
-     like with like instead of looking like a stockpile. */
-  vsmill:{label:'Tipped against milled, over the hours milled',axis:v=>fmtT(v),
-          get:x=>Math.max(x.milledTipped||0,x.milled||0),pair:true}
+  milled:{label:'Mill t/h, shift average',axis:v=>Math.round(v),get:x=>millAvg(x)||0},
+  milledt:{label:'Milled tonnes by shift, total of the hourly entries',axis:v=>fmtT(v),get:x=>x.milled||0},
+  /* Both as rates over the hours recorded, so a shift with eight readings compares fairly
+     with one that has twelve. */
+  vsmill:{label:'Tipped against mill, t/h over the hours recorded',axis:v=>Math.round(v),
+          get:x=>Math.max(tipAvg(x)||0,millAvg(x)||0),pair:true}
 };
 
 /* Open a finished shift and look at its shape, not just its totals. The rows come from
@@ -1180,14 +1187,14 @@ function renderShiftDetail(){
     const mr=millRows({date:sh.shift_date,name:sh.shift_name},
       o.loads.filter(l=>l.party!=='rom').map(l=>({t:Date.parse(l.logged_at),tonnes:+l.tonnes||0})),millMap(o.milled));
     const ms=millSum(mr);
-    $('#hdMill').innerHTML='<h3>Tipped against milled</h3>'+(!ms.hours?emptyMsg('No milled tonnes were entered for this shift.')
+    $('#hdMill').innerHTML='<h3>Tipped against milled</h3>'+(!ms.hours?emptyMsg('No mill readings were recorded for this shift.')
       :'<div class="hd-stats">'
-        +`<div class="stat"><div class="v">${fmtT(ms.milled)}</div><div class="l">t milled, ${ms.hours} h</div></div>`
-        +`<div class="stat"><div class="v">${fmtT(ms.tipped)}</div><div class="l">t tipped, same hours</div></div>`
-        +`<div class="stat"><div class="v">${signed(ms.stock)}</div><div class="l">COS stock</div></div>`
-        +`<div class="stat"><div class="v">${n0(ms.rate)}</div><div class="l">milled t/h</div></div></div>`
+        +`<div class="stat"><div class="v">${n0(ms.rate)}</div><div class="l">mill t/h, average of ${ms.hours} h</div></div>`
+        +`<div class="stat"><div class="v">${fmtT(ms.milled)}</div><div class="l">t milled, total</div></div>`
+        +`<div class="stat"><div class="v">${n0(ms.tippedRate)}</div><div class="l">tipped t/h, same hours</div></div>`
+        +`<div class="stat"><div class="v">${signed(ms.stock)}</div><div class="l">COS stock</div></div></div>`
         +'<div class="chart">'+millBarsSvg(mr)
-        +'<div class="legend"><span><i class="bar"></i>tipped to the COS</span><span><i class="bar" style="background:var(--green)"></i>milled</span></div></div>');
+        +'<div class="legend"><span><i class="bar"></i>tipped to the COS</span><span><i class="bar" style="background:var(--green)"></i>mill t/h</span><span><i style="background:var(--green)"></i>mill average</span></div></div>');
   }else $('#hdMill').innerHTML='';
 
   /* Ore split, and the other party alongside when both logged. */
@@ -1213,7 +1220,7 @@ function renderShiftDetail(){
 
 function renderHist(){
   const el=$('#c-hist'), tb=$('#histBody'), note=$('#histNote');
-  const rows=histFiltered(), ranged=!!(histFrom||histTo), COLS=14;
+  const rows=histFiltered(), ranged=!!(histFrom||histTo), COLS=15;
   note.textContent=!rows.length?''
     :rows.length+' shift'+(rows.length===1?'':'s')
      +(histRows.length?' from the shared log':' from this device only')
@@ -1237,7 +1244,7 @@ function renderHist(){
     const v=M.get(x)||0, hh=Math.min(v,max)/max*IH, X=PL+i*bw+gap/2;
     const fill=x.name==='Night'?'var(--night)':'var(--blue)', op=openShift&&openShift.id===x.id?'1':'.85';
     if(M.pair){
-      const w=Math.max(1,(bw-gap)/2), ha=Math.min(x.milledTipped||0,max)/max*IH, hb=Math.min(x.milled||0,max)/max*IH;
+      const w=Math.max(1,(bw-gap)/2), ha=Math.min(tipAvg(x)||0,max)/max*IH, hb=Math.min(millAvg(x)||0,max)/max*IH;
       s+=`<rect x="${X}" y="${PT+IH-ha}" width="${w}" height="${ha}" rx="2" fill="${fill}" opacity="${op}"/>`;
       s+=`<rect x="${X+w}" y="${PT+IH-hb}" width="${w}" height="${hb}" rx="2" fill="var(--green)" opacity="${op}"/>`;
     }else
@@ -1247,7 +1254,7 @@ function renderHist(){
   el.innerHTML=s+'</svg>'
     +'<div class="legend"><span><i class="bar"></i>Day</span>'
     +'<span><i class="bar" style="background:var(--night)"></i>Night</span>'
-    +(M.pair?'<span><i class="bar" style="background:var(--green)"></i>milled</span>':'')+'</div>';
+    +(M.pair?'<span><i class="bar" style="background:var(--green)"></i>mill t/h</span>':'')+'</div>';
   renderShiftDetail();
   tb.innerHTML=rows.map(x=>{
     const g=(x.rom!=null&&x.cos!=null)?x.rom-x.cos:null;
@@ -1260,8 +1267,9 @@ function renderHist(){
       +'<td class="r">'+x.loads+'</td>'
       +'<td class="r">'+fmtT(x.tonnes)+'</td>'
       +'<td class="r">'+n0(x.tph)+'</td>'
-      +'<td class="r">'+(x.milled==null?'—':fmtT(x.milled)
+      +'<td class="r">'+(x.milled==null?'—':n0(millAvg(x))
           +(x.milledHours<MILL_H?' <span class="live-tag">'+x.milledHours+'h</span>':''))+'</td>'
+      +'<td class="r">'+(x.milled==null?'—':fmtT(x.milled))+'</td>'
       +'<td class="r">'+(x.milled==null||x.milledTipped==null?'—':signed(x.milledTipped-x.milled))+'</td>'
       +'<td class="r">'+(x.delay?fmtDur(x.delay):'—')+'</td>'
       +'<td class="r">'+(x.rom==null?'—':fmtT(x.rom))+'</td>'
@@ -1385,7 +1393,8 @@ function renderPrev(st){
   $('#pLoads').textContent=n;
   $('#pTph').textContent=(hrs>0)?n0(t/hrs):'—';
   $('#pDelay').textContent=dly?fmtDur(dly):'none';
-  $('#pMilled').textContent=+(r.milled_hours||0)>0?fmtT(+r.milled_tonnes):'—';
+  $('#pMilled').textContent=+(r.milled_hours||0)>0?n0(+r.milled_tonnes/+r.milled_hours):'—';
+  $('#pMillTotal').textContent=+(r.milled_hours||0)>0?fmtT(+r.milled_tonnes):'—';
   const dBox=$('#pDeltaBox'), dEl=$('#pDelta');
   const gap=(st.proj!=null&&t>0)?st.proj-t:null;
   dEl.textContent=gap==null?'—':(gap>=0?'+':'−')+fmtT(Math.abs(gap));
@@ -1443,8 +1452,9 @@ function renderDash(){
   $('#dTipsNeed').textContent=n1(st.tipsNeed);
   markRate($('#dTipsBox'),st);
   const mm=ensureMill(), msum=millSum(millRows(mm.key,S.loads,mm.t));
-  $('#dMilled').textContent=msum.hours?fmtT(msum.milled):'—';
-  $('#dMillRate').textContent=msum.rate!=null?n0(msum.rate):'—';
+  $('#dMilled').textContent=msum.rate!=null?n0(msum.rate):'—';
+  $('#dMillTotal').textContent=msum.hours?fmtT(msum.milled):'—';
+  $('#dMillRate').textContent=msum.tippedRate!=null?n0(msum.tippedRate):'—';
   $('#dStock').textContent=signed(msum.stock);
 
   renderPrev(st);
@@ -1490,8 +1500,10 @@ function renderSync(){
   }
 }
 
-/* ---- Milled tonnes -------------------------------------------------------------------
-   The mill's hourly tonnes, entered on the COS pad against clock hours — Day 06:00 to 18:00,
+/* ---- Mill readings -------------------------------------------------------------------
+   The mill's t/h, recorded once an hour on the COS pad and averaged across the shift. An
+   hour's reading is also that hour's tonnes, which is what lets it stand beside tipping hour
+   by hour and add up to a COS stock figure. Hours are clock hours — Day 06:00 to 18:00,
    Night 18:00 to 06:00 — because that is how the plant reports them and how the paper sheets
    record them. That runs half an hour ahead of the 06:30 changeover, which helps rather than
    hinders: every one of a shift's twelve hours has closed before that crew hands over, so
@@ -1530,8 +1542,11 @@ function millRows(k,loads,t){
 function millSum(rows){
   const got=rows.filter(r=>r.milled!=null);
   const milled=got.reduce((a,r)=>a+r.milled,0), tipped=got.reduce((a,r)=>a+r.tipped,0);
+  /* rate is the shift figure: the average of the hourly readings. tippedRate is tipping over
+     the same hours, so the two compare whether four hours were recorded or twelve. */
   return{hours:got.length,milled,tipped,stock:got.length?tipped-milled:null,
-    rate:got.length?milled/got.length:null,due:rows.filter(r=>r.closed&&r.milled==null).length};
+    rate:got.length?milled/got.length:null,tippedRate:got.length?tipped/got.length:null,
+    due:rows.filter(r=>r.closed&&r.milled==null).length};
 }
 const signed=v=>v==null?'—':Math.abs(v)<0.5?'0':(v>0?'+':'−')+fmtT(Math.abs(v));
 
@@ -1598,6 +1613,9 @@ function millBarsSvg(rows){
       g+=`<rect x="${(X+w).toFixed(1)}" y="${(PT+IH-mh).toFixed(1)}" width="${w.toFixed(1)}" height="${mh.toFixed(1)}" rx="1.5" fill="var(--green)" opacity=".85"/>`}
     g+=`<text x="${(X+w).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${pad(new Date(r.h).getHours())}</text>`;
   });
+  const avg=millSum(rows).rate;
+  if(avg!=null){const y=yOf(avg,max).toFixed(1);
+    g+=`<line x1="${PL}" x2="${W-PR}" y1="${y}" y2="${y}" stroke="var(--green)" stroke-width="1.5" stroke-dasharray="5 4"/>`}
   return g+'</svg>';
 }
 function millCumSvg(rows){
@@ -1621,23 +1639,25 @@ function renderMill(){
   const m=ensureMill(), k=m.key, rows=millRows(k,S.loads,m.t), sm=millSum(rows);
   const out=S.millOut&&S.millOut[mkey(k)]?Object.keys(S.millOut[mkey(k)].rows).length:0;
   $('#millTitle').textContent=k.name+' shift, '+fmtDate(dOf(k.date))+' · hours run on the clock, as the plant reports them';
-  $('#mMilled').textContent=sm.hours?fmtT(sm.milled):'—';
-  $('#mHours').textContent=sm.hours?sm.hours+' of '+MILL_H+' hours, '+n0(sm.rate)+' t/h':'no hours entered yet';
-  $('#mTipped').textContent=sm.hours?fmtT(sm.tipped):'—';
-  $('#mTippedNote').textContent=sm.hours?'in those same hours':'';
+  $('#mMilled').textContent=sm.hours?n0(sm.rate):'—';
+  $('#mTotal').textContent=sm.hours?fmtT(sm.milled):'—';
+  $('#mTotalNote').textContent=sm.hours?'sum of the hourly entries':'';
+  $('#mHours').textContent=sm.hours?sm.hours+' of '+MILL_H+' hours recorded':'no hours recorded yet';
+  $('#mTipped').textContent=sm.hours?n0(sm.tippedRate):'—';
+  $('#mTippedNote').textContent=sm.hours?'to the COS':'';
   $('#mStock').textContent=signed(sm.stock);
-  $('#mStockNote').textContent=sm.stock==null?'':sm.stock>=0?'the COS built':'the COS was drawn down';
+  $('#mStockNote').textContent=sm.stock==null?'':(sm.stock>=0?'the COS built':'the COS was drawn down')+' over '+sm.hours+' h';
   $('#millNote').textContent=viewing()
-    ?(millServer===false?'The shared log is not taking milled tonnes yet, so none can show here.'
-      :sm.hours?'':'Milled tonnes are entered hour by hour on the COS pad.')
-    :millServer===false?'Saved on this pad. The shared log is not taking milled tonnes yet — they send once it is updated, and nothing is lost meanwhile.'
+    ?(millServer===false?'The shared log is not taking mill readings yet, so none can show here.'
+      :sm.hours?'':'The mill is recorded hour by hour on the COS pad.')
+    :millServer===false?'Saved on this pad. The shared log is not taking mill readings yet — they send once it is updated, and nothing is lost meanwhile.'
     :millErr&&out?'Saved on this pad, '+out+' hour'+(out===1?'':'s')+' waiting on a connection.'
     :out?'Sending…'
     :sm.due?sm.due+' closed hour'+(sm.due===1?'':'s')+' still to enter.'
-    :'Type the mill\u2019s tonnes against each hour once it closes. Blank clears it.';
+    :'Record the mill\u2019s t/h against each hour once it closes \u2014 the shift figure is their average. Blank clears it.';
   $('#c-mill').innerHTML=rows.some(r=>r.tipped||r.milled!=null)?millBarsSvg(rows)
-    :emptyMsg('Hours fill in as tips and milled tonnes arrive.');
-  $('#c-millcum').innerHTML=millCumSvg(rows)||emptyMsg('The running comparison starts with the first milled hour.');
+    :emptyMsg('Hours fill in as tips and mill readings arrive.');
+  $('#c-millcum').innerHTML=millCumSvg(rows)||emptyMsg('The running comparison starts with the first recorded hour.');
   const body=$('#millBody');
   if(body.contains(document.activeElement))return;   /* never rebuild a field someone is typing in */
   const cur=rows.findIndex(r=>r.started&&!r.closed);
@@ -1645,7 +1665,7 @@ function renderMill(){
   body.innerHTML=rows.map((r,i)=>{
     if(r.milled!=null)run+=r.tipped-r.milled;
     const cell=cos
-      ?`<input class="mill-in" type="text" inputmode="decimal" autocomplete="off" data-h="${r.h}" value="${r.milled==null?'':r.milled}"${r.started?'':' disabled'} aria-label="Milled tonnes ${hourLabel(r.h)}">`
+      ?`<input class="mill-in" type="text" inputmode="decimal" autocomplete="off" data-h="${r.h}" value="${r.milled==null?'':r.milled}"${r.started?'':' disabled'} aria-label="Mill t/h ${hourLabel(r.h)}">`
       :(r.milled==null?'—':fmtT(r.milled));
     return `<tr class="${i===cur?'now':''}"><td>${hourLabel(r.h)}${cos&&r.closed&&r.milled==null?'<span class="due">due</span>':''}</td>`
       +`<td class="r">${r.started?fmtT(r.tipped):'—'}</td><td class="r">${cell}</td>`
@@ -1830,9 +1850,11 @@ async function exportShiftCsv(id){
       loads.filter(l=>l.party!=='rom').map(l=>({t:Date.parse(l.logged_at),tonnes:+l.tonnes||0})),millMap(d.milled));
     const ms=millSum(mr), r1=v=>Math.round(v*10)/10;
     rows.push([]);
-    rows.push(['hour_start_iso','hour','tipped_to_cos_t','milled_t','tipped_less_milled_t']);
+    rows.push(['hour_start_iso','hour','tipped_to_cos_t','mill_tph','tipped_less_mill_t']);
     mr.forEach(r=>rows.push([iso(r.h),hourLabel(r.h),r1(r.tipped),r.milled==null?'':r.milled,r.milled==null?'':r1(r.tipped-r.milled)]));
-    rows.push(['milled hours entered',ms.hours,r1(ms.tipped),r1(ms.milled),r1(ms.stock)]);
+    rows.push([]);
+    rows.push(['mill_hours_recorded','mill_tph_average','mill_total_t','tipped_tph_same_hours','cos_stock_change_t']);
+    rows.push([ms.hours,r1(ms.rate),r1(ms.milled),r1(ms.tippedRate),r1(ms.stock)]);
   }
   const delayMs=p=>delays.filter(x=>(x.party==='rom'?'rom':'cos')===p&&x.ended_at)
     .reduce((a,x)=>a+(Date.parse(x.ended_at)-Date.parse(x.started_at)),0);
@@ -1849,15 +1871,15 @@ function exportRangeCsv(){
   const rows=histFiltered();
   if(!rows.length){alert('No shifts in view to export.');return}
   const out=[['shift_date','shift','hours','loads','tonnes','tph','delay_s','rom_tonnes','cos_tonnes','gap_t','ore_split',
-               'milled_t','milled_hours','tipped_same_hours_t','cos_stock_change_t']];
+               'mill_tph_average','mill_total_t','mill_hours','tipped_tph_same_hours','cos_stock_change_t']];
   rows.slice().reverse().forEach(x=>out.push([
     x.date,x.name,x.hours!=null?Math.round(x.hours*100)/100:'',x.loads,
     Math.round(x.tonnes*10)/10,x.tph!=null?Math.round(x.tph):'',Math.round((x.delay||0)/1000),
     x.rom==null?'':Math.round(x.rom*10)/10,x.cos==null?'':Math.round(x.cos*10)/10,
     (x.rom!=null&&x.cos!=null)?Math.round((x.rom-x.cos)*10)/10:'',
     x.byOre?ORES.filter(o=>x.byOre[o.k]).map(o=>o.k+' '+Math.round(x.byOre[o.k])).join(' / '):'',
-    x.milled==null?'':Math.round(x.milled*10)/10,x.milledHours||0,
-    x.milledTipped==null?'':Math.round(x.milledTipped*10)/10,
+    millAvg(x)==null?'':Math.round(millAvg(x)*10)/10,x.milled==null?'':Math.round(x.milled*10)/10,x.milledHours||0,
+    tipAvg(x)==null?'':Math.round(tipAvg(x)*10)/10,
     x.milled==null||x.milledTipped==null?'':Math.round((x.milledTipped-x.milled)*10)/10]));
   download('tipm8-shifts-'+(histFrom||rows[rows.length-1].date)+'-to-'+(histTo||rows[0].date)+'.csv',
     toCsv(out),'text/csv');
@@ -1878,7 +1900,7 @@ function exportCsv(){
   if(mk&&S.mill&&sameKey(S.mill.key,mk)&&Object.keys(S.mill.t).length){
     const mr=millRows(mk,S.loads,S.mill.t), r1=v=>Math.round(v*10)/10;
     rows.push([]);
-    rows.push(['hour_start_iso','hour','tipped_to_cos_t','milled_t','tipped_less_milled_t','','','','','','']);
+    rows.push(['hour_start_iso','hour','tipped_to_cos_t','mill_tph','tipped_less_mill_t','','','','','','']);
     mr.forEach(r=>rows.push([iso(r.h),hourLabel(r.h),r1(r.tipped),r.milled==null?'':r.milled,r.milled==null?'':r1(r.tipped-r.milled),'','','','','','']));
   }
   rows.push([]);
@@ -1942,7 +1964,7 @@ $('#millBody').addEventListener('change',e=>{
   const h=+i.dataset.h;
   if(setMilled(h,i.value)===false){
     const m=ensureMill(); i.value=h in m.t?m.t[h]:'';
-    alert('Milled tonnes needs a number, for example 520.');return;
+    alert('The mill reading needs a number, for example 520.');return;
   }
   renderMill();renderDash();
 });

@@ -1,6 +1,9 @@
--- Milled tonnes: the mill's hourly throughput, entered on the COS pad and compared with
--- what was tipped to the COS over the same hours. The difference is what the COS stockpile
--- built or gave up.
+-- Milled tonnes: the mill's t/h, recorded once an hour on the COS pad. The shift figure is
+-- the average of those readings, shown beside their total. An hour's reading is also that
+-- hour's tonnes, so `milled.tonnes` holds the reading as it was entered, and summing it gives
+-- the shift total. Tipping is compared over the same hours; the difference is what the COS
+-- stockpile built or gave up. Averages are worked out by the page from milled_tonnes and
+-- milled_hours, so nothing here needed to change when that became the headline.
 --
 -- Hours are clock hours, twelve to a shift, as the plant reports them and the paper sheets
 -- record them: Day 06:00-18:00, Night 18:00-06:00. The client sends each hour's start; the

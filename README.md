@@ -52,11 +52,14 @@ rather than converted from tph, so correcting a tonnage in the load log cannot d
 rate away from the actual count. It needs five minutes of shift before it will show a
 rate at all, and a target before it will show anything to judge against.
 
-**Milled tonnes.** The COS pad has a *Tipped against milled* section at the head of the
-right-hand column: a row for each hour of the shift, where the operator types in the mill's
-tonnes once the hour closes. Blank clears an hour. Beside each figure sits what was tipped
-to the COS in that same hour, the difference, and the running difference — which is what
-the COS stockpile built or gave up. A closed hour with nothing entered is marked *due*.
+**Mill readings.** The COS pad has a *Tipped against milled* section at the head of the
+right-hand column: a row for each hour of the shift, where the operator records the mill's
+t/h once the hour closes. Blank clears an hour. The shift figure is the **average of the
+hourly readings**, shown beside their **total**; an hour's reading is also that hour's
+tonnes, which is why the two agree. Beside each reading sits what was tipped to the COS in
+that same hour, the difference, and the running difference — which is what the COS
+stockpile built or gave up. A closed hour with nothing recorded is marked *due*, and the
+by-hour chart carries the average as a dashed line.
 
 Hours run on the clock, as the plant reports them and the paper sheets record them: Day
 06:00 to 18:00, Night 18:00 to 06:00. That is half an hour ahead of the 06:30 changeover,
@@ -64,21 +67,23 @@ deliberately — each of a shift's twelve hours has closed before that crew hand
 crew that saw an hour is the crew that enters it. It does mean the first hour's tipping only
 counts from 06:30, since the half hour before belongs to the previous shift's log.
 
-**Tipping is only ever compared over the hours that have a milled figure.** Enter three
-hours and the comparison is three hours of tipping, not the whole shift, so a half-filled
-column cannot manufacture a stockpile. The same rule holds on the dashboard, in shift
-history and in the CSVs.
+**Tipping is only ever compared over the hours that have a reading.** Record three hours
+and the comparison is tipped t/h over those three hours against the mill's average over the
+same three, so a half-filled column cannot manufacture a stockpile, and a shift with eight
+readings compares fairly with one that has twelve. The same rule holds on the dashboard, in
+shift history and in the CSVs.
 
 Milled figures are written to the pad first and queued, exactly like tips, so a dropped
 signal costs lag rather than numbers. They send through their own call, `sync_milled`, so a
 problem there can never hold up logging. Only the hours actually touched are sent, which
 means a pad with nothing to say cannot wipe hours another pad entered.
 
-The watcher's dashboard carries milled tonnes, milled t/h and COS stock in the live row,
-the previous shift's milled total, and the same by-hour and running-total charts. Previous
-shifts gains *Milled* and *COS stock* columns — a milled total covering fewer than twelve
-hours says how many — two new trends, *Milled* and *Tipped vs milled*, and a milled section
-in each shift's detail view and CSV. The ROM pad does not see any of it.
+The watcher's dashboard carries mill t/h average, milled total, tipped t/h over the same
+hours and COS stock in the live row, the previous shift's mill average and total, and the
+same by-hour and running-total charts. Previous shifts gains *Mill t/h*, *Milled t* and
+*COS stock* columns — an average covering fewer than twelve hours says how many — three new
+trends, *Mill t/h*, *Milled t* and *Tipped vs mill t/h*, and a mill section in each shift's
+detail view and CSV. The ROM pad does not see any of it.
 
 **Corrections.** Tap any row in the load log to fix its time, tonnage or ore source.
 Loads re-sort by time after an edit, so intervals and charts stay honest. Undo last tip
