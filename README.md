@@ -1,4 +1,4 @@
-# TipM8 — COS tipping log
+i87# TipM8 — COS tipping log
 
 Truck tipping log and rate tracker for the ROM pad. Tap a button each time a truck tips
 to the COS, log the delays in between, and watch the shift rate against target.
@@ -51,6 +51,34 @@ which is the only sensible answer at that point. Counted from the loads in the w
 rather than converted from tph, so correcting a tonnage in the load log cannot drag the
 rate away from the actual count. It needs five minutes of shift before it will show a
 rate at all, and a target before it will show anything to judge against.
+
+**Milled tonnes.** The COS pad has a *Tipped against milled* section at the head of the
+right-hand column: a row for each hour of the shift, where the operator types in the mill's
+tonnes once the hour closes. Blank clears an hour. Beside each figure sits what was tipped
+to the COS in that same hour, the difference, and the running difference — which is what
+the COS stockpile built or gave up. A closed hour with nothing entered is marked *due*.
+
+Hours run on the clock, as the plant reports them and the paper sheets record them: Day
+06:00 to 18:00, Night 18:00 to 06:00. That is half an hour ahead of the 06:30 changeover,
+deliberately — each of a shift's twelve hours has closed before that crew hands over, so the
+crew that saw an hour is the crew that enters it. It does mean the first hour's tipping only
+counts from 06:30, since the half hour before belongs to the previous shift's log.
+
+**Tipping is only ever compared over the hours that have a milled figure.** Enter three
+hours and the comparison is three hours of tipping, not the whole shift, so a half-filled
+column cannot manufacture a stockpile. The same rule holds on the dashboard, in shift
+history and in the CSVs.
+
+Milled figures are written to the pad first and queued, exactly like tips, so a dropped
+signal costs lag rather than numbers. They send through their own call, `sync_milled`, so a
+problem there can never hold up logging. Only the hours actually touched are sent, which
+means a pad with nothing to say cannot wipe hours another pad entered.
+
+The watcher's dashboard carries milled tonnes, milled t/h and COS stock in the live row,
+the previous shift's milled total, and the same by-hour and running-total charts. Previous
+shifts gains *Milled* and *COS stock* columns — a milled total covering fewer than twelve
+hours says how many — two new trends, *Milled* and *Tipped vs milled*, and a milled section
+in each shift's detail view and CSV. The ROM pad does not see any of it.
 
 **Corrections.** Tap any row in the load log to fix its time, tonnage or ore source.
 Loads re-sort by time after an edit, so intervals and charts stay honest. Undo last tip
@@ -229,26 +257,39 @@ from payload × fill held on the shift and shared between them, so tonnage varia
 load-count variance restated rather than an independent measurement.
 
 ### Where the database lives
-The tables and the three functions are not in this repo — there is no migrations
-directory and no build step, so the Supabase project is its own source of truth. It does
-keep a migration history of its own, newest last:
+Most of the schema is not in this repo — it was built migration by migration against the
+Supabase project, which is its own source of truth and keeps its own history, newest last:
 
-    tipm8_initial_schema              tables
+    tipm8_initial_schema                       tables
     tipm8_rls_policies
     tipm8_sync_function
     tipm8_active_shift_reports_contenders
-    tipm8_two_party_reconciliation    rows carry party and device
+    tipm8_two_party_reconciliation             rows carry party and device
     tipm8_prune_scoped_to_device
-    backup_schema_for_deleted_shifts  backup.deleted_shifts, outside public
-    active_shift_newest_started_wins  newest started_at wins, not newest unclosed
-    shift_summaries_and_prev_shift    shared history, and prev on active_shift
+    backup_schema_for_deleted_shifts           backup.deleted_shifts, outside public
+    active_shift_newest_started_wins           newest started_at wins, not newest unclosed
+    shift_summaries_and_prev_shift             shared history, and prev on active_shift
+    shift_detail_for_csv_export                one shift in full, both parties
+    shift_start_anchored_to_changeover         a shift starts at 06:30/18:30, not first tip
+    shift_settings_inherit_and_stop_clobber    a silent pad cannot overwrite settings
+    loads_cannot_be_hijacked_across_parties    a load id belongs to the party that made it
+
+From milled tonnes onward, migrations are also kept in `sql/`, because they have to be
+applied by hand whenever the database connection is not available to whoever wrote them:
+
+    sql/2026-09-17_milled_tonnes.sql           milled table, sync_milled, milled on the reads
+
+Each one is safe to run twice. Paste it into the Supabase SQL editor and run it. Until
+`2026-09-17_milled_tonnes.sql` has been applied the page still works: the COS pad keeps
+milled figures on the pad and queues them, says the shared log is not taking them yet, and
+sends them once it is; watchers show a dash rather than a zero.
 
 To read what is actually deployed rather than trusting this file:
 
     select pg_get_functiondef(p.oid) from pg_proc p
       join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public'
-       and p.proname in ('active_shift','sync_party','shift_summaries');
+       and p.proname in ('active_shift','sync_party','sync_milled','shift_summaries','shift_detail');
 
 `backup.deleted_shifts` holds shifts removed by hand, as a JSON blob per shift. It sits
 in a `backup` schema rather than `public` on purpose: PostgREST only exposes `public`, so

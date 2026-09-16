@@ -171,6 +171,12 @@ tr.pick{cursor:pointer}
 tr.pick:hover td{background:rgba(125,211,255,.06)}
 tr.on td{background:rgba(125,211,255,.10)}
 .live-tag{color:var(--amber);font-size:12px}
+body[data-role="rom"] .no-rom{display:none}
+.mill-in{width:96px;text-align:right;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px;min-height:40px;font-variant-numeric:tabular-nums;color:var(--text)}
+.mill-in:focus{outline:2px solid var(--blue);outline-offset:-1px}
+.mill-in:disabled{opacity:.3}
+table.mill tr.now td{background:rgba(125,211,255,.06)}
+table.mill .due{color:var(--amber);font-size:12px;margin-left:6px}
 .rec-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:14px 18px}
 .rec-top .v{font-family:var(--serif);font-weight:500;font-size:32px;font-variation-settings:"opsz" 144;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.05}
 .rec-top .l{color:var(--muted);font-size:13px;margin-top:4px}
@@ -235,6 +241,9 @@ tr.edit:hover td{background:var(--surface)}
     <div class="stat" id="dTipsBox"><div class="v" id="dTips">—</div><div class="l" id="dTipsLabel">tips/h now</div></div>
     <div class="stat"><div class="v" id="dTipsNeed">—</div><div class="l" id="dTipsNeedLabel">tips/h needed</div></div>
     <div class="stat"><div class="v" id="dSince">—</div><div class="l">since last tip</div></div>
+    <div class="stat"><div class="v" id="dMilled">—</div><div class="l">t milled</div></div>
+    <div class="stat"><div class="v" id="dMillRate">—</div><div class="l">milled t/h</div></div>
+    <div class="stat"><div class="v" id="dStock">—</div><div class="l">COS stock, tipped less milled</div></div>
   </div>
 
   <div class="dash-prev" id="dPrev" hidden>
@@ -244,6 +253,7 @@ tr.edit:hover td{background:var(--surface)}
       <div class="stat"><div class="v" id="pLoads">—</div><div class="l">loads</div></div>
       <div class="stat"><div class="v" id="pTph">—</div><div class="l">tph average</div></div>
       <div class="stat"><div class="v" id="pDelay">—</div><div class="l">delay</div></div>
+      <div class="stat"><div class="v" id="pMilled">—</div><div class="l">milled</div></div>
       <div class="stat" id="pDeltaBox"><div class="v" id="pDelta">—</div><div class="l">projected vs last</div></div>
     </div>
   </div>
@@ -334,6 +344,33 @@ tr.edit:hover td{background:var(--surface)}
 </div>
 <div class="col-b">
 
+  <section class="no-rom" id="millSec">
+    <h2>Tipped against milled</h2>
+    <div class="note" id="millTitle" style="margin:-4px 0 10px"></div>
+    <div class="rec-top">
+      <div><div class="v" id="mMilled">—</div><div class="l">t milled</div><div class="s" id="mHours"></div></div>
+      <div><div class="v" id="mTipped">—</div><div class="l">t tipped to the COS</div><div class="s" id="mTippedNote"></div></div>
+      <div class="gap" id="mStockBox"><div class="v" id="mStock">—</div><div class="l">COS stock, tipped less milled</div><div class="s" id="mStockNote"></div></div>
+    </div>
+    <div class="note" id="millNote"></div>
+    <div class="chart">
+      <h3>By hour</h3>
+      <div id="c-mill"></div>
+      <div class="legend"><span><i class="bar"></i>tipped to the COS</span><span><i class="bar" style="background:var(--green)"></i>milled</span></div>
+    </div>
+    <div class="chart">
+      <h3>Running total, over the hours milled</h3>
+      <div id="c-millcum"></div>
+      <div class="legend"><span><i style="background:var(--blue)"></i>tipped</span><span><i style="background:var(--green)"></i>milled</span></div>
+    </div>
+    <div class="tbl">
+    <table class="mill">
+      <thead><tr><th>Hour</th><th class="r">Tipped t</th><th class="r">Milled t</th><th class="r">Difference</th><th class="r">Running</th></tr></thead>
+      <tbody id="millBody"></tbody>
+    </table>
+    </div>
+  </section>
+
   <section class="synced" id="recSec">
     <h2>Reconciliation</h2>
     <div class="rec-top">
@@ -412,6 +449,8 @@ tr.edit:hover td{background:var(--surface)}
         <option value="tph">tph</option>
         <option value="loads">Loads</option>
         <option value="delay">Delay</option>
+        <option value="milled">Milled</option>
+        <option value="vsmill">Tipped vs milled</option>
       </select>
       <button class="link" id="histClear" type="button">Clear dates</button>
       <button class="link" id="histCsv" type="button">Export these shifts</button>
@@ -428,12 +467,13 @@ tr.edit:hover td{background:var(--surface)}
       </div>
       <div class="hd-stats" id="hdStats"></div>
       <div class="chart"><h3>Tonnes by hour</h3><div id="hdHours"></div></div>
+      <div id="hdMill"></div>
       <div id="hdSplit"></div>
       <div id="hdDelays"></div>
     </div>
     <div class="tbl">
     <table>
-      <thead><tr><th>Shift</th><th>Date</th><th class="r">Hours</th><th class="r">Loads</th><th class="r">Tonnes</th><th class="r">tph</th><th class="r">Delay</th><th class="r">ROM</th><th class="r">COS</th><th class="r">Gap t</th><th>Ore split</th><th></th></tr></thead>
+      <thead><tr><th>Shift</th><th>Date</th><th class="r">Hours</th><th class="r">Loads</th><th class="r">Tonnes</th><th class="r">tph</th><th class="r">Milled</th><th class="r">COS stock</th><th class="r">Delay</th><th class="r">ROM</th><th class="r">COS</th><th class="r">Gap t</th><th>Ore split</th><th></th></tr></thead>
       <tbody id="histBody"></tbody>
     </table>
     </div>
@@ -486,9 +526,9 @@ const REASONS=['No trucks','Crusher','Screen','Loader down','Blast','Weather','S
    into it. Change it here and redeploy. It is in the page source like everything else,
    so it stops a wrong tap rather than a determined person. */
 const LOG_PIN='1234';
-const DEF={shift:{label:'',startedAt:null,endedAt:null},fleet:{payload:30,fill:0.9,trucks:6,excavators:2,loaders:2,targetTph:0,shiftHours:12},ore:ORES[0].k,loads:[],delays:[],history:[]};
+const DEF={shift:{label:'',startedAt:null,endedAt:null},fleet:{payload:30,fill:0.9,trucks:6,excavators:2,loaders:2,targetTph:0,shiftHours:12},ore:ORES[0].k,loads:[],delays:[],history:[],mill:null,millOut:{}};
 let S=(()=>{try{const r=store.get(KEY);if(r){const o=JSON.parse(r);
-  return{shift:{...DEF.shift,...(o.shift||{})},fleet:{...DEF.fleet,...(o.fleet||{})},ore:o.ore||DEF.ore,loads:o.loads||[],delays:o.delays||[],history:o.history||[]}}}catch(e){}
+  return{shift:{...DEF.shift,...(o.shift||{})},fleet:{...DEF.fleet,...(o.fleet||{})},ore:o.ore||DEF.ore,loads:o.loads||[],delays:o.delays||[],history:o.history||[],mill:o.mill||null,millOut:o.millOut||{}}}}catch(e){}
   return JSON.parse(JSON.stringify(DEF))})();
 
 /* ---- Live sync -------------------------------------------------------------
@@ -637,6 +677,8 @@ function remoteState(d){
     loads:mine.loads,
     delays:mine.delays,
     history:[],
+    mill:{key:sh.shift_date?{date:sh.shift_date,name:sh.shift_name}:shiftKey(),t:millMap(d&&d.milled)},
+    millOut:{},
     source:{device:sh.device||null,openShifts:(d&&d.open_shifts)||0}
   };
 }
@@ -656,6 +698,8 @@ async function pull(){
         S.fleet.targetTph=parseFloat(sh.target_tph);S.fleet.shiftHours=parseFloat(sh.shift_hours);
       }
     }
+    if(d)millServer=Array.isArray(d.milled);    /* the key is only there once the database has been updated */
+    if(party()==='cos')millFromLog(d);
     remote={rom:rowsFor(d,'rom'),cos:rowsFor(d,'cos'),at:now()};
     prevShift=(d&&d.prev)||null;
     lastPull=now();syncErr=null;
@@ -1024,13 +1068,17 @@ function histUnified(){
     return{id:r.id,label:r.label||'',date:r.shift_date,name:r.shift_name,startedAt:a,hours:hrs,
       loads:+(r[which+'_loads']||0),tonnes:t,tph:(hrs>0)?t/hrs:null,
       delay:+(r[which+'_delay_ms']||0),rom:+(r.rom_tonnes||0),cos:+(r.cos_tonnes||0),
-      byOre:r[which+'_by_ore']||null,open:!r.ended_at};
+      byOre:r[which+'_by_ore']||null,open:!r.ended_at,
+      milled:+(r.milled_hours||0)>0?+r.milled_tonnes:null,milledHours:+(r.milled_hours||0),
+      milledTipped:+(r.milled_hours||0)>0?+(r.milled_tipped||0):null};
   });
   return S.history.slice().reverse().map(x=>{
     const k=x.key||shiftKey(x.startedAt);
     return{id:null,label:x.label||'',date:k.date,name:k.name,startedAt:x.startedAt,
       hours:(x.endedAt-x.startedAt)/3600000,loads:x.loads,tonnes:x.tonnes,tph:x.tph,
-      delay:x.delay,rom:null,cos:null,byOre:x.byOre||null,open:false};
+      delay:x.delay,rom:null,cos:null,byOre:x.byOre||null,open:false,
+      milled:x.milled!=null?x.milled:null,milledHours:x.milledHours||0,
+      milledTipped:x.milledTipped!=null?x.milledTipped:null};
   });
 }
 const histFiltered=()=>histUnified().filter(x=>(!histFrom||x.date>=histFrom)&&(!histTo||x.date<=histTo));
@@ -1041,7 +1089,12 @@ const METRICS={
   tonnes:{label:'Tonnes by shift', axis:v=>fmtT(v),      get:x=>x.tonnes},
   tph:   {label:'Shift average tph',axis:v=>Math.round(v),get:x=>x.tph},
   loads: {label:'Loads by shift',   axis:v=>Math.round(v),get:x=>x.loads},
-  delay: {label:'Delay by shift',   axis:v=>Math.round(v)+'m',get:x=>(x.delay||0)/60000}
+  delay: {label:'Delay by shift',   axis:v=>Math.round(v)+'m',get:x=>(x.delay||0)/60000},
+  milled:{label:'Milled tonnes by shift',axis:v=>fmtT(v),get:x=>x.milled||0},
+  /* Tipped over the milled hours only, so a shift with half its hours entered compares
+     like with like instead of looking like a stockpile. */
+  vsmill:{label:'Tipped against milled, over the hours milled',axis:v=>fmtT(v),
+          get:x=>Math.max(x.milledTipped||0,x.milled||0),pair:true}
 };
 
 /* Open a finished shift and look at its shape, not just its totals. The rows come from
@@ -1057,7 +1110,7 @@ async function viewShift(id){
     if(!r.ok)throw new Error('HTTP '+r.status);
     const d=await r.json();
     if(!d||!d.shift)throw new Error('that shift is no longer in the database');
-    openShift={id,shift:d.shift,loads:d.loads||[],delays:d.delays||[]};
+    openShift={id,shift:d.shift,loads:d.loads||[],delays:d.delays||[],milled:d.milled};
   }catch(e){openShift=null;alert('Could not open that shift: '+(e.message||'no connection'))}
   openBusy=false;renderHist();renderShiftDetail();
 }
@@ -1121,6 +1174,22 @@ function renderShiftDetail(){
     +(onScale?'<span><i class="tgt"></i>target, '+n0(tgt)+' t/h</span>'
       :tgt>0?'<span>target '+n0(tgt)+' t/h, above every hour</span>':'')+'</div>';
 
+  /* Milled against what reached the COS, over the same clock hours. Absent entirely when the
+     database predates milled tonnes, rather than claiming nothing was milled. */
+  if(Array.isArray(o.milled)){
+    const mr=millRows({date:sh.shift_date,name:sh.shift_name},
+      o.loads.filter(l=>l.party!=='rom').map(l=>({t:Date.parse(l.logged_at),tonnes:+l.tonnes||0})),millMap(o.milled));
+    const ms=millSum(mr);
+    $('#hdMill').innerHTML='<h3>Tipped against milled</h3>'+(!ms.hours?emptyMsg('No milled tonnes were entered for this shift.')
+      :'<div class="hd-stats">'
+        +`<div class="stat"><div class="v">${fmtT(ms.milled)}</div><div class="l">t milled, ${ms.hours} h</div></div>`
+        +`<div class="stat"><div class="v">${fmtT(ms.tipped)}</div><div class="l">t tipped, same hours</div></div>`
+        +`<div class="stat"><div class="v">${signed(ms.stock)}</div><div class="l">COS stock</div></div>`
+        +`<div class="stat"><div class="v">${n0(ms.rate)}</div><div class="l">milled t/h</div></div></div>`
+        +'<div class="chart">'+millBarsSvg(mr)
+        +'<div class="legend"><span><i class="bar"></i>tipped to the COS</span><span><i class="bar" style="background:var(--green)"></i>milled</span></div></div>');
+  }else $('#hdMill').innerHTML='';
+
   /* Ore split, and the other party alongside when both logged. */
   const byOre={};mine.forEach(l=>{const k=l.ore||'—';byOre[k]=(byOre[k]||0)+(+l.tonnes||0)});
   const keys=Object.keys(byOre).filter(k=>byOre[k]>0);
@@ -1144,7 +1213,7 @@ function renderShiftDetail(){
 
 function renderHist(){
   const el=$('#c-hist'), tb=$('#histBody'), note=$('#histNote');
-  const rows=histFiltered(), ranged=!!(histFrom||histTo), COLS=12;
+  const rows=histFiltered(), ranged=!!(histFrom||histTo), COLS=14;
   note.textContent=!rows.length?''
     :rows.length+' shift'+(rows.length===1?'':'s')
      +(histRows.length?' from the shared log':' from this device only')
@@ -1166,13 +1235,19 @@ function renderHist(){
      rates — so a trend that blends them hides the thing worth seeing. */
   h.forEach((x,i)=>{
     const v=M.get(x)||0, hh=Math.min(v,max)/max*IH, X=PL+i*bw+gap/2;
-    const fill=x.name==='Night'?'var(--night)':'var(--blue)';
-    s+=`<rect x="${X}" y="${PT+IH-hh}" width="${Math.max(1,bw-gap)}" height="${hh}" rx="2" fill="${fill}" opacity="${openShift&&openShift.id===x.id?'1':'.85'}"/>`;
+    const fill=x.name==='Night'?'var(--night)':'var(--blue)', op=openShift&&openShift.id===x.id?'1':'.85';
+    if(M.pair){
+      const w=Math.max(1,(bw-gap)/2), ha=Math.min(x.milledTipped||0,max)/max*IH, hb=Math.min(x.milled||0,max)/max*IH;
+      s+=`<rect x="${X}" y="${PT+IH-ha}" width="${w}" height="${ha}" rx="2" fill="${fill}" opacity="${op}"/>`;
+      s+=`<rect x="${X+w}" y="${PT+IH-hb}" width="${w}" height="${hb}" rx="2" fill="var(--green)" opacity="${op}"/>`;
+    }else
+    s+=`<rect x="${X}" y="${PT+IH-hh}" width="${Math.max(1,bw-gap)}" height="${hh}" rx="2" fill="${fill}" opacity="${op}"/>`;
     s+=`<text x="${X+(bw-gap)/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(x.name[0]+' '+fmtDate(dOf(x.date)))}</text>`;
   });
   el.innerHTML=s+'</svg>'
     +'<div class="legend"><span><i class="bar"></i>Day</span>'
-    +'<span><i class="bar" style="background:var(--night)"></i>Night</span></div>';
+    +'<span><i class="bar" style="background:var(--night)"></i>Night</span>'
+    +(M.pair?'<span><i class="bar" style="background:var(--green)"></i>milled</span>':'')+'</div>';
   renderShiftDetail();
   tb.innerHTML=rows.map(x=>{
     const g=(x.rom!=null&&x.cos!=null)?x.rom-x.cos:null;
@@ -1185,6 +1260,9 @@ function renderHist(){
       +'<td class="r">'+x.loads+'</td>'
       +'<td class="r">'+fmtT(x.tonnes)+'</td>'
       +'<td class="r">'+n0(x.tph)+'</td>'
+      +'<td class="r">'+(x.milled==null?'—':fmtT(x.milled)
+          +(x.milledHours<MILL_H?' <span class="live-tag">'+x.milledHours+'h</span>':''))+'</td>'
+      +'<td class="r">'+(x.milled==null||x.milledTipped==null?'—':signed(x.milledTipped-x.milled))+'</td>'
       +'<td class="r">'+(x.delay?fmtDur(x.delay):'—')+'</td>'
       +'<td class="r">'+(x.rom==null?'—':fmtT(x.rom))+'</td>'
       +'<td class="r">'+(x.cos==null?'—':fmtT(x.cos))+'</td>'
@@ -1307,6 +1385,7 @@ function renderPrev(st){
   $('#pLoads').textContent=n;
   $('#pTph').textContent=(hrs>0)?n0(t/hrs):'—';
   $('#pDelay').textContent=dly?fmtDur(dly):'none';
+  $('#pMilled').textContent=+(r.milled_hours||0)>0?fmtT(+r.milled_tonnes):'—';
   const dBox=$('#pDeltaBox'), dEl=$('#pDelta');
   const gap=(st.proj!=null&&t>0)?st.proj-t:null;
   dEl.textContent=gap==null?'—':(gap>=0?'+':'−')+fmtT(Math.abs(gap));
@@ -1363,6 +1442,10 @@ function renderDash(){
   $('#dTips').textContent=n1(st.tipsRoll);
   $('#dTipsNeed').textContent=n1(st.tipsNeed);
   markRate($('#dTipsBox'),st);
+  const mm=ensureMill(), msum=millSum(millRows(mm.key,S.loads,mm.t));
+  $('#dMilled').textContent=msum.hours?fmtT(msum.milled):'—';
+  $('#dMillRate').textContent=msum.rate!=null?n0(msum.rate):'—';
+  $('#dStock').textContent=signed(msum.stock);
 
   renderPrev(st);
 
@@ -1407,7 +1490,171 @@ function renderSync(){
   }
 }
 
-function renderAll(){renderShiftControls();renderOre();renderFleet();renderDelay();renderClock();renderPace();renderSplit();renderCharts();renderLog();renderDelayLog();renderHist();renderSync();renderParty();renderRecon();renderDash()}
+/* ---- Milled tonnes -------------------------------------------------------------------
+   The mill's hourly tonnes, entered on the COS pad against clock hours — Day 06:00 to 18:00,
+   Night 18:00 to 06:00 — because that is how the plant reports them and how the paper sheets
+   record them. That runs half an hour ahead of the 06:30 changeover, which helps rather than
+   hinders: every one of a shift's twelve hours has closed before that crew hands over, so
+   the crew that saw an hour is the crew that enters it.
+
+   Tipped tonnes are held against milled only over the hours that have a milled figure, never
+   the whole shift, so a half-filled column cannot conjure a stockpile out of nothing. */
+const MILL_H=12, HOUR=3600000;
+let millServer=null, millErr=null, millBusy=false, millTimer=null;
+const mkey=k=>k.date+'|'+k.name;
+const hourLabel=h=>pad(new Date(h).getHours())+':00–'+pad(new Date(h+HOUR).getHours())+':00';
+function millHours(k){
+  const [y,m,d]=k.date.split('-').map(Number);
+  const base=new Date(y,m-1,d,k.name==='Night'?18:6,0,0,0).getTime();
+  return Array.from({length:MILL_H},(_,i)=>base+i*HOUR);
+}
+const millKey=()=>keyOf(S.shift)||shiftKey();
+function ensureMill(){
+  const k=millKey();
+  if(!S.millOut||typeof S.millOut!=='object')S.millOut={};
+  if(!S.mill||!S.mill.key||!sameKey(S.mill.key,k))S.mill={key:k,t:{}};
+  return S.mill;
+}
+function millMap(list){
+  const t={};
+  (Array.isArray(list)?list:[]).forEach(m=>{const h=Date.parse(m.hour_start);if(isFinite(h))t[h]=+m.tonnes});
+  return t;
+}
+function millRows(k,loads,t){
+  const at=now();
+  return millHours(k).map(h=>({h,
+    tipped:loads.reduce((a,l)=>a+(l.t>=h&&l.t<h+HOUR?(+l.tonnes||0):0),0),
+    milled:t&&Object.prototype.hasOwnProperty.call(t,h)?+t[h]:null,
+    started:h<=at, closed:h+HOUR<=at}));
+}
+function millSum(rows){
+  const got=rows.filter(r=>r.milled!=null);
+  const milled=got.reduce((a,r)=>a+r.milled,0), tipped=got.reduce((a,r)=>a+r.tipped,0);
+  return{hours:got.length,milled,tipped,stock:got.length?tipped-milled:null,
+    rate:got.length?milled/got.length:null,due:rows.filter(r=>r.closed&&r.milled==null).length};
+}
+const signed=v=>v==null?'—':Math.abs(v)<0.5?'0':(v>0?'+':'−')+fmtT(Math.abs(v));
+
+/* An edit is written to the pad first and queued, like a tip, so a dropped signal costs lag
+   rather than numbers. Blank clears the hour. Only the hours actually touched are sent. */
+function setMilled(h,raw){
+  if(party()!=='cos')return false;
+  const m=ensureMill(), k=m.key, txt=String(raw==null?'':raw).replace(/[,\s]/g,'');
+  let v=null;
+  if(txt!==''){v=parseFloat(txt);if(!isFinite(v)||v<0)return false;v=Math.round(v*10)/10}
+  if(v==null)delete m.t[h]; else m.t[h]=v;
+  const box=S.millOut[mkey(k)]||(S.millOut[mkey(k)]={rows:{},
+    startedAt:(S.shift.startedAt&&sameKey(keyOf(S.shift),k))?S.shift.startedAt:shiftStart(millHours(k)[1])});
+  box.rows[h]=v;
+  store.set(KEY,JSON.stringify(S));
+  scheduleMill(600);
+  return true;
+}
+function scheduleMill(ms){clearTimeout(millTimer);millTimer=setTimeout(drainMill,ms)}
+async function drainMill(){
+  if(millBusy||party()!=='cos'||!S.millOut)return;
+  const keys=Object.keys(S.millOut);
+  if(!keys.length)return;
+  millBusy=true;
+  for(const k of keys){
+    const box=S.millOut[k], sent=JSON.stringify(box.rows), [date,name]=k.split('|');
+    try{
+      const r=await fetch(SB.url+'/rest/v1/rpc/sync_milled',{method:'POST',headers:sbHeaders(),
+        body:JSON.stringify({p_site:SB.site,p_date:date,p_name:name,
+          p_settings:{device:deviceName(),started_at:iso(box.startedAt)},
+          p_rows:Object.keys(box.rows).map(h=>({hour_start:iso(+h),tonnes:box.rows[h]}))})});
+      if(r.status===404){millServer=false;millErr=null;break}   /* the database has not been updated for this yet */
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      millServer=true;millErr=null;
+      if(S.millOut[k]&&JSON.stringify(S.millOut[k].rows)===sent)delete S.millOut[k];
+    }catch(e){millErr=e.message||'no connection';break}
+  }
+  millBusy=false;
+  store.set(KEY,JSON.stringify(S));
+  renderMill();
+  if(Object.keys(S.millOut).length)scheduleMill(millServer===false?120000:millErr?15000:1500);
+}
+/* The log's copy of the live shift's milled hours. A pad keeps its own unsent edits over it
+   and takes everything else, so a replacement pad picks up hours entered before it arrived. */
+function millFromLog(d){
+  if(!d||!d.shift||!Array.isArray(d.milled))return;
+  const k={date:d.shift.shift_date,name:d.shift.shift_name}, m=ensureMill();
+  if(!sameKey(k,m.key))return;
+  const out=(S.millOut[mkey(k)]||{}).rows||{}, log=millMap(d.milled);
+  let changed=false;
+  Object.keys(log).forEach(h=>{if(!(h in out)&&m.t[h]!==log[h]){m.t[h]=log[h];changed=true}});
+  if(changed)store.set(KEY,JSON.stringify(S));
+  if(Object.keys(S.millOut).length)scheduleMill(1500);
+}
+
+function millBarsSvg(rows){
+  const {max,step}=niceMax(Math.max(1,...rows.map(r=>Math.max(r.tipped,r.milled||0))));
+  let g=svgOpen()+yGrid(max,step,v=>fmtT(v));
+  const bw=IW/rows.length, gap=Math.min(8,bw*0.22), w=Math.max(1,(bw-gap)/2);
+  rows.forEach((r,i)=>{
+    const X=PL+i*bw+gap/2, th=Math.min(r.tipped,max)/max*IH;
+    g+=`<rect x="${X.toFixed(1)}" y="${(PT+IH-th).toFixed(1)}" width="${w.toFixed(1)}" height="${th.toFixed(1)}" rx="1.5" fill="var(--blue)" opacity=".85"/>`;
+    if(r.milled!=null){const mh=Math.min(r.milled,max)/max*IH;
+      g+=`<rect x="${(X+w).toFixed(1)}" y="${(PT+IH-mh).toFixed(1)}" width="${w.toFixed(1)}" height="${mh.toFixed(1)}" rx="1.5" fill="var(--green)" opacity=".85"/>`}
+    g+=`<text x="${(X+w).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${pad(new Date(r.h).getHours())}</text>`;
+  });
+  return g+'</svg>';
+}
+function millCumSvg(rows){
+  const pts=[];let ct=0,cm=0;
+  rows.forEach((r,i)=>{if(r.milled!=null){ct+=r.tipped;cm+=r.milled;pts.push({i:i+1,ct,cm})}});
+  if(!pts.length)return null;
+  const {max,step}=niceMax(Math.max(ct,cm,1));
+  const xOf=i=>PL+i/rows.length*IW, x0=xOf(pts[0].i-1);
+  let g=svgOpen()+yGrid(max,step,v=>v>=1000?(v/1000)+'k':v);
+  rows.forEach((r,i)=>{if(i%2===0)g+=`<text x="${xOf(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${pad(new Date(r.h).getHours())}</text>`});
+  const line=(key,col)=>`<path d="M${x0.toFixed(1)} ${yOf(0,max).toFixed(1)} `
+      +pts.map(p=>'L'+xOf(p.i).toFixed(1)+' '+yOf(p[key],max).toFixed(1)).join(' ')
+      +`" fill="none" stroke="${col}" stroke-width="2"/>`
+      +pts.map(p=>`<circle cx="${xOf(p.i).toFixed(1)}" cy="${yOf(p[key],max).toFixed(1)}" r="2.5" fill="${col}"/>`).join('');
+  return g+line('ct','var(--blue)')+line('cm','var(--green)')+'</svg>';
+}
+
+function renderMill(){
+  const cos=party()==='cos';
+  if(!cos&&!viewing())return;               /* the ROM pad does not see this section */
+  const m=ensureMill(), k=m.key, rows=millRows(k,S.loads,m.t), sm=millSum(rows);
+  const out=S.millOut&&S.millOut[mkey(k)]?Object.keys(S.millOut[mkey(k)].rows).length:0;
+  $('#millTitle').textContent=k.name+' shift, '+fmtDate(dOf(k.date))+' · hours run on the clock, as the plant reports them';
+  $('#mMilled').textContent=sm.hours?fmtT(sm.milled):'—';
+  $('#mHours').textContent=sm.hours?sm.hours+' of '+MILL_H+' hours, '+n0(sm.rate)+' t/h':'no hours entered yet';
+  $('#mTipped').textContent=sm.hours?fmtT(sm.tipped):'—';
+  $('#mTippedNote').textContent=sm.hours?'in those same hours':'';
+  $('#mStock').textContent=signed(sm.stock);
+  $('#mStockNote').textContent=sm.stock==null?'':sm.stock>=0?'the COS built':'the COS was drawn down';
+  $('#millNote').textContent=viewing()
+    ?(millServer===false?'The shared log is not taking milled tonnes yet, so none can show here.'
+      :sm.hours?'':'Milled tonnes are entered hour by hour on the COS pad.')
+    :millServer===false?'Saved on this pad. The shared log is not taking milled tonnes yet — they send once it is updated, and nothing is lost meanwhile.'
+    :millErr&&out?'Saved on this pad, '+out+' hour'+(out===1?'':'s')+' waiting on a connection.'
+    :out?'Sending…'
+    :sm.due?sm.due+' closed hour'+(sm.due===1?'':'s')+' still to enter.'
+    :'Type the mill\u2019s tonnes against each hour once it closes. Blank clears it.';
+  $('#c-mill').innerHTML=rows.some(r=>r.tipped||r.milled!=null)?millBarsSvg(rows)
+    :emptyMsg('Hours fill in as tips and milled tonnes arrive.');
+  $('#c-millcum').innerHTML=millCumSvg(rows)||emptyMsg('The running comparison starts with the first milled hour.');
+  const body=$('#millBody');
+  if(body.contains(document.activeElement))return;   /* never rebuild a field someone is typing in */
+  const cur=rows.findIndex(r=>r.started&&!r.closed);
+  let run=0;
+  body.innerHTML=rows.map((r,i)=>{
+    if(r.milled!=null)run+=r.tipped-r.milled;
+    const cell=cos
+      ?`<input class="mill-in" type="text" inputmode="decimal" autocomplete="off" data-h="${r.h}" value="${r.milled==null?'':r.milled}"${r.started?'':' disabled'} aria-label="Milled tonnes ${hourLabel(r.h)}">`
+      :(r.milled==null?'—':fmtT(r.milled));
+    return `<tr class="${i===cur?'now':''}"><td>${hourLabel(r.h)}${cos&&r.closed&&r.milled==null?'<span class="due">due</span>':''}</td>`
+      +`<td class="r">${r.started?fmtT(r.tipped):'—'}</td><td class="r">${cell}</td>`
+      +`<td class="r">${r.milled==null?'—':signed(r.tipped-r.milled)}</td>`
+      +`<td class="r">${r.milled==null?'—':signed(run)}</td></tr>`;
+  }).join('');
+}
+
+function renderAll(){renderShiftControls();renderOre();renderFleet();renderDelay();renderClock();renderPace();renderSplit();renderCharts();renderLog();renderDelayLog();renderHist();renderSync();renderParty();renderRecon();renderMill();renderDash()}
 
 /* Actions */
 let locked=false, flashTimer=null;
@@ -1454,7 +1701,10 @@ function archiveShift(){
   const st=stats();
   if(S.loads.length){
     const last=S.loads[S.loads.length-1], sk=keyOf(S.shift);
-    S.history.push({id:S.shift.startedAt,label:S.shift.label||'',key:sk,startedAt:S.shift.startedAt,endedAt:endT(),loads:st.n,tonnes:Math.round(st.cum*10)/10,tph:st.tphShift,tphOp:st.tphOp,delay:st.delay,byOre:Object.fromEntries(Object.entries(st.byOre).map(([k,v])=>[k,Math.round(v.t*10)/10])),trucks:last.trucks,exc:last.exc,ldr:last.ldr});
+    const ms=(S.mill&&sk&&sameKey(S.mill.key,sk))?millSum(millRows(sk,S.loads,S.mill.t)):null;
+    S.history.push({milled:ms&&ms.hours?Math.round(ms.milled*10)/10:null,milledHours:ms?ms.hours:0,
+      milledTipped:ms&&ms.hours?Math.round(ms.tipped*10)/10:null,
+      id:S.shift.startedAt,label:S.shift.label||'',key:sk,startedAt:S.shift.startedAt,endedAt:endT(),loads:st.n,tonnes:Math.round(st.cum*10)/10,tph:st.tphShift,tphOp:st.tphOp,delay:st.delay,byOre:Object.fromEntries(Object.entries(st.byOre).map(([k,v])=>[k,Math.round(v.t*10)/10])),trucks:last.trucks,exc:last.exc,ldr:last.ldr});
     if(S.history.length>60)S.history=S.history.slice(-60);
   }
   if(party()&&S.shift.id&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
@@ -1575,6 +1825,15 @@ async function exportShiftCsv(id){
         b?Math.round((b-a)/1000):'']);
     });
   }
+  if(Array.isArray(d.milled)&&d.milled.length){
+    const mr=millRows({date:sh.shift_date,name:sh.shift_name},
+      loads.filter(l=>l.party!=='rom').map(l=>({t:Date.parse(l.logged_at),tonnes:+l.tonnes||0})),millMap(d.milled));
+    const ms=millSum(mr), r1=v=>Math.round(v*10)/10;
+    rows.push([]);
+    rows.push(['hour_start_iso','hour','tipped_to_cos_t','milled_t','tipped_less_milled_t']);
+    mr.forEach(r=>rows.push([iso(r.h),hourLabel(r.h),r1(r.tipped),r.milled==null?'':r.milled,r.milled==null?'':r1(r.tipped-r.milled)]));
+    rows.push(['milled hours entered',ms.hours,r1(ms.tipped),r1(ms.milled),r1(ms.stock)]);
+  }
   const delayMs=p=>delays.filter(x=>(x.party==='rom'?'rom':'cos')===p&&x.ended_at)
     .reduce((a,x)=>a+(Date.parse(x.ended_at)-Date.parse(x.started_at)),0);
   rows.push([]);
@@ -1589,13 +1848,17 @@ async function exportShiftCsv(id){
 function exportRangeCsv(){
   const rows=histFiltered();
   if(!rows.length){alert('No shifts in view to export.');return}
-  const out=[['shift_date','shift','hours','loads','tonnes','tph','delay_s','rom_tonnes','cos_tonnes','gap_t','ore_split']];
+  const out=[['shift_date','shift','hours','loads','tonnes','tph','delay_s','rom_tonnes','cos_tonnes','gap_t','ore_split',
+               'milled_t','milled_hours','tipped_same_hours_t','cos_stock_change_t']];
   rows.slice().reverse().forEach(x=>out.push([
     x.date,x.name,x.hours!=null?Math.round(x.hours*100)/100:'',x.loads,
     Math.round(x.tonnes*10)/10,x.tph!=null?Math.round(x.tph):'',Math.round((x.delay||0)/1000),
     x.rom==null?'':Math.round(x.rom*10)/10,x.cos==null?'':Math.round(x.cos*10)/10,
     (x.rom!=null&&x.cos!=null)?Math.round((x.rom-x.cos)*10)/10:'',
-    x.byOre?ORES.filter(o=>x.byOre[o.k]).map(o=>o.k+' '+Math.round(x.byOre[o.k])).join(' / '):'']));
+    x.byOre?ORES.filter(o=>x.byOre[o.k]).map(o=>o.k+' '+Math.round(x.byOre[o.k])).join(' / '):'',
+    x.milled==null?'':Math.round(x.milled*10)/10,x.milledHours||0,
+    x.milledTipped==null?'':Math.round(x.milledTipped*10)/10,
+    x.milled==null||x.milledTipped==null?'':Math.round((x.milledTipped-x.milled)*10)/10]));
   download('tipm8-shifts-'+(histFrom||rows[rows.length-1].date)+'-to-'+(histTo||rows[0].date)+'.csv',
     toCsv(out),'text/csv');
 }
@@ -1610,6 +1873,13 @@ function exportCsv(){
     rows.push([]);
     rows.push(['shift','delay','from_iso','from','reason','length_s','','','','','']);
     st.spans.forEach((d,i)=>rows.push([label,i+1,new Date(d.a).toISOString(),fmtTime(d.a),d.reason,Math.round(d.ms/1000),'','','','','']));
+  }
+  const mk=keyOf(S.shift);
+  if(mk&&S.mill&&sameKey(S.mill.key,mk)&&Object.keys(S.mill.t).length){
+    const mr=millRows(mk,S.loads,S.mill.t), r1=v=>Math.round(v*10)/10;
+    rows.push([]);
+    rows.push(['hour_start_iso','hour','tipped_to_cos_t','milled_t','tipped_less_milled_t','','','','','','']);
+    mr.forEach(r=>rows.push([iso(r.h),hourLabel(r.h),r1(r.tipped),r.milled==null?'':r.milled,r.milled==null?'':r1(r.tipped-r.milled),'','','','','','']));
   }
   rows.push([]);
   rows.push(['summary','elapsed_s','delay_s','operating_s','tonnes','tph_elapsed','tph_operating','utilisation','','','']);
@@ -1634,7 +1904,7 @@ function restore(file){
     const d=o&&o.data&&typeof o.data==='object'?o.data:o;
     if(!d||!Array.isArray(d.loads)||!Array.isArray(d.history))return alert('That does not look like a TipM8 backup.');
     if(!confirm(`Replace everything on this device with this backup? It holds ${d.loads.length} load${d.loads.length===1?'':'s'} in the current shift and ${d.history.length} finished shift${d.history.length===1?'':'s'}.`))return;
-    S={shift:{...DEF.shift,...(d.shift||{})},fleet:{...DEF.fleet,...(d.fleet||{})},ore:d.ore||DEF.ore,loads:d.loads,delays:d.delays||[],history:d.history};
+    S={shift:{...DEF.shift,...(d.shift||{})},fleet:{...DEF.fleet,...(d.fleet||{})},ore:d.ore||DEF.ore,loads:d.loads,delays:d.delays||[],history:d.history,mill:d.mill||null,millOut:{}};
     save();renderAll();
   };
   r.onerror=()=>alert('Could not read that file.');
@@ -1642,7 +1912,7 @@ function restore(file){
 }
 
 function clearAll(){
-  if(viewing())return alert('Switch Live sync off this device before clearing its own log.');if(!confirm('Clear the current shift, fleet settings and all previous shifts on this device?'))return;S=JSON.parse(JSON.stringify(DEF));save();renderAll()}
+  if(viewing())return alert('This device is Watching, so it has no log of its own to clear. Pick ROM pad or COS first.');if(!confirm('Clear the current shift, fleet settings and all previous shifts on this device?'))return;S=JSON.parse(JSON.stringify(DEF));save();renderAll()}
 
 /* Wiring */
 $('#tipBtn').addEventListener('click',tip);
@@ -1666,7 +1936,18 @@ $('#histBody').addEventListener('click',e=>{
 });
 $('#hdClose').addEventListener('click',closeShift);
 $('#histMetric').addEventListener('change',e=>{histMetric=e.target.value;renderHist()});
-window.addEventListener('online',()=>{if(party())drain();if(viewing())pull()});
+window.addEventListener('online',()=>{if(party())drain();if(party()==='cos')drainMill();if(viewing())pull()});
+$('#millBody').addEventListener('change',e=>{
+  const i=e.target.closest('.mill-in'); if(!i)return;
+  const h=+i.dataset.h;
+  if(setMilled(h,i.value)===false){
+    const m=ensureMill(); i.value=h in m.t?m.t[h]:'';
+    alert('Milled tonnes needs a number, for example 520.');return;
+  }
+  renderMill();renderDash();
+});
+$('#millBody').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.closest('.mill-in'))e.target.blur()});
+$('#millBody').addEventListener('focusout',()=>setTimeout(()=>{if(!$('#millBody').contains(document.activeElement))renderMill()},0));
 $('#delayChips').addEventListener('click',e=>{const b=e.target.closest('[data-reason]');if(b)startDelay(b.dataset.reason)});
 $('#delayBody').addEventListener('click',e=>{const b=e.target.closest('[data-ddel]');if(b)delDelay(+b.dataset.ddel)});
 $('#clearBtn').addEventListener('click',clearAll);
@@ -1706,6 +1987,7 @@ $('#storeNote').textContent=store.ok?'Log is saved on this device and survives a
 
 document.body.dataset.role=role;
 rollShift();   /* a device asleep across a changeover files the old shift as soon as it wakes */
+if(party()==='cos'&&S.millOut&&Object.keys(S.millOut).length)scheduleMill(2000);
 if(synced()){pull();pollTimer=setInterval(()=>{if(!document.hidden)pull()},viewing()?8000:20000)}
 if(party()&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
 renderAll();
