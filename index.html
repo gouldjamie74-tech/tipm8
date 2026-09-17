@@ -259,6 +259,20 @@ tr.edit:hover td{background:var(--surface)}
       <div class="stat" id="pDeltaBox"><div class="v" id="pDelta">—</div><div class="l">projected vs last</div></div>
     </div>
   </div>
+
+  <div class="dash-prev" id="dDay" hidden>
+    <div class="dash-prev-h">Previous 24 hours<span id="dDayWhen"></span></div>
+    <div class="dash-row">
+      <div class="stat"><div class="v" id="yTonnes">—</div><div class="l">tonnes</div></div>
+      <div class="stat"><div class="v" id="yLoads">—</div><div class="l">loads</div></div>
+      <div class="stat"><div class="v" id="yTph">—</div><div class="l">t/h over 24 h</div></div>
+      <div class="stat"><div class="v" id="yDelay">—</div><div class="l">delay</div></div>
+      <div class="stat"><div class="v" id="yMill">—</div><div class="l">mill t/h</div></div>
+      <div class="stat"><div class="v" id="yMillTotal">—</div><div class="l">t milled</div></div>
+      <div class="stat"><div class="v" id="yStock">—</div><div class="l">COS stock</div></div>
+    </div>
+    <div class="note" id="dDaySplit"></div>
+  </div>
 </section>
 
 <div class="grid">
@@ -271,11 +285,6 @@ tr.edit:hover td{background:var(--surface)}
     <div class="clock">
       <span class="t" id="elapsed">00:00:00</span>
       <span class="sub" id="shiftStatus"></span>
-    </div>
-    <div class="row">
-      <button class="btn writer" id="startBtn">Start shift clock</button>
-      <button class="btn writer" id="endBtn">End shift</button>
-      <button class="btn primary writer" id="newBtn" hidden>New shift</button>
     </div>
   </section>
 
@@ -710,6 +719,7 @@ async function pull(){
     lastPull=now();syncErr=null;
     renderAll();
     pullHistory();
+    pullDay();
   }catch(e){syncErr=e.message||'no connection';renderSync()}
 }
 
@@ -717,6 +727,47 @@ async function pull(){
    dashboard had nothing behind the live shift. These come from the database, which is
    the only copy every device can see. Failures stay quiet: history is a reference, and
    a stale table is not worth shouting over the live numbers. */
+/* The last full production day — a Day shift and the Night shift that follows it, 06:30 to
+   06:30 — which is always the day before the shift running now. Fetched on its own rather
+   than read out of the history table, so a date filter set down there cannot hide it. */
+let dayRows=null, dayFor=null, dayAt=null, dayBusy=false;
+const prevDay=()=>{const d=new Date(dOf(shiftKey().date));d.setDate(d.getDate()-1);return ymd(d)};
+async function pullDay(){
+  if(!synced()||dayBusy)return;
+  const want=prevDay();
+  if(dayFor===want&&dayAt&&now()-dayAt<60000)return;
+  dayBusy=true;
+  try{
+    const r=await fetch(SB.url+'/rest/v1/rpc/shift_summaries',{method:'POST',headers:sbHeaders(),
+      body:JSON.stringify({p_site:SB.site,p_from:want,p_to:want,p_limit:4})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const rows=await r.json();
+    dayRows=Array.isArray(rows)?rows:[];dayFor=want;dayAt=now();
+    renderDash();
+  }catch(e){}
+  finally{dayBusy=false}
+}
+function renderDay(){
+  const box=$('#dDay');
+  if(!dayRows||!dayRows.length){box.hidden=true;return}
+  box.hidden=false;
+  const which=primary(), sum=f=>dayRows.reduce((a,r)=>a+(+r[f]||0),0);
+  const t=sum(which+'_tonnes'), mt=sum('milled_tonnes'), mh=sum('milled_hours'), dly=sum(which+'_delay_ms');
+  const byName=nm=>dayRows.find(r=>r.shift_name===nm);
+  $('#dDayWhen').textContent=fmtDate(dOf(dayFor))+', D/S + N/S';
+  $('#yTonnes').textContent=fmtT(t);
+  $('#yLoads').textContent=sum(which+'_loads');
+  $('#yTph').textContent=n0(t/24);
+  $('#yDelay').textContent=dly?fmtDur(dly):'none';
+  $('#yMill').textContent=mh?n0(mt/mh):'—';
+  $('#yMillTotal').textContent=mh?fmtT(mt):'—';
+  $('#yStock').textContent=mh?signed(sum('milled_tipped')-mt):'—';
+  const part=(lab,r)=>lab+' '+(!r?'not logged'
+    :fmtT(+r[which+'_tonnes']||0)+' t'+(+r.milled_hours>0?', mill '+n0(+r.milled_tonnes/+r.milled_hours)+' t/h':''));
+  $('#dDaySplit').textContent=part('D/S',byName('Day'))+' · '+part('N/S',byName('Night'))
+    +(mh&&mh<24?' · mill recorded for '+mh+' of 24 hours':'');
+}
+
 async function pullHistory(force){
   if(!synced()||histBusy)return;
   if(!force&&histAt&&now()-histAt<60000)return;
@@ -863,7 +914,7 @@ function markRate(el,st){
 function renderClock(){
   const st=stats(), f=S.fleet;
   $('#elapsed').textContent=fmtClock(st.elapsed);
-  $('#shiftStatus').textContent=!S.shift.startedAt?'Clock starts on the first tip, or start it now'
+  $('#shiftStatus').textContent=!S.shift.startedAt?'Clock starts on the first tip, from the changeover'
     :S.shift.endedAt?'Ended '+fmtTime(S.shift.endedAt):'Started '+fmtTime(S.shift.startedAt);
   $('#sinceLast').textContent=st.sinceLast==null?'—':fmtDur(st.sinceLast);
   $('#cumT').textContent=fmtT(st.cum);
@@ -893,15 +944,12 @@ function renderClock(){
 
 function renderShiftControls(){
   const started=!!S.shift.startedAt, ended=!!S.shift.endedAt;
-  if(viewing()){['startBtn','endBtn','newBtn','undoBtn','tipBtn','csvBtn','backupBtn','restoreBtn','clearBtn']
+  if(viewing()){['undoBtn','tipBtn','csvBtn','backupBtn','restoreBtn','clearBtn']
     .forEach(k=>{const e=$('#'+k);if(e)e.disabled=k==='csvBtn'?false:true});}
-  $('#startBtn').disabled=started;
-  $('#endBtn').disabled=!started||ended;
-  $('#newBtn').hidden=!ended;
   $('#undoBtn').disabled=!S.loads.length||ended;
   const tip=$('#tipBtn');
   tip.disabled=ended;
-  if(ended){$('#tipMain').textContent='Shift ended';$('#tipSub').textContent='Start a new shift to keep logging'}
+  if(ended){$('#tipMain').textContent='Shift closed';$('#tipSub').textContent='The next shift opens at the changeover'}
   else if(!tip.classList.contains('logged')){$('#tipMain').textContent=P().verb;$('#tipSub').textContent=`${S.ore}, ${S.fleet.payload} t × ${S.fleet.fill} = ${tPerLoad().toFixed(1)} t per load`}
   if(document.activeElement!==$('#shiftLabel'))$('#shiftLabel').value=S.shift.label||'';
 }
@@ -1459,6 +1507,7 @@ function renderDash(){
   $('#dStock').textContent=signed(msum.stock);
 
   renderPrev(st);
+  renderDay();
 
   const bar=$('#dProg'), pace=$('#dPace'), need=$('#dNeed');
   if(!S.shift.startedAt||!st.planMs){bar.innerHTML='';pace.textContent='';need.textContent='';return}
@@ -1734,8 +1783,6 @@ function delDelay(i){
   save();renderAll();
 }
 
-function startShift(){if(S.shift.startedAt)return;S.shift.startedAt=shiftStart();S.shift.key=shiftKey();save();renderAll()}
-function endShift(){if(!S.shift.startedAt||S.shift.endedAt)return;if(!confirm('End this shift? Tipping stops until the next changeover, or until you start a shift by hand.'))return;const t=now();const od=openDelay();if(od)od.t1=t;S.shift.endedAt=t;save();renderAll()}
 
 /* File the shift on the deck into this device's own history and push it one last time. */
 function archiveShift(){
@@ -1751,13 +1798,6 @@ function archiveShift(){
   if(party()&&S.shift.id&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
 }
 
-function newShift(){
-  archiveShift();
-  S.shift={label:'',startedAt:null,endedAt:null};
-  S.loads=[];
-  S.delays=[];
-  save();renderAll();
-}
 
 /* Shifts change over at 06:30 and 18:30 on their own, so nobody has to remember the tap
    that files one shift and opens the next. The old shift is closed at the changeover
@@ -1959,9 +1999,6 @@ function clearAll(){
 
 /* Wiring */
 $('#tipBtn').addEventListener('click',tip);
-$('#startBtn').addEventListener('click',startShift);
-$('#endBtn').addEventListener('click',endShift);
-$('#newBtn').addEventListener('click',newShift);
 $('#undoBtn').addEventListener('click',undo);
 $('#csvBtn').addEventListener('click',exportCsv);
 $('#backupBtn').addEventListener('click',backup);
@@ -2030,6 +2067,10 @@ $('#storeNote').textContent=store.ok?'Log is saved on this device and survives a
 
 document.body.dataset.role=role;
 rollShift();   /* a device asleep across a changeover files the old shift as soon as it wakes */
+/* End shift has gone: the changeover closes shifts now. A pad that ended its shift before it
+   went, and is still inside that shift's window, would refuse tips until the next changeover,
+   so reopen it. Its next sync clears the end time in the log too. */
+if(!viewing()&&S.shift.startedAt&&S.shift.endedAt&&sameKey(keyOf(S.shift),shiftKey())){S.shift.endedAt=null;save()}
 if(party()==='cos'&&S.millOut&&Object.keys(S.millOut).length)scheduleMill(2000);
 if(synced()){pull();pollTimer=setInterval(()=>{if(!document.hidden)pull()},viewing()?8000:20000)}
 if(party()&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}

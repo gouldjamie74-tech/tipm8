@@ -20,8 +20,8 @@ Open `index.html` in a browser, or in VS Code use the Live Server extension
 
 **Tipping.** The amber button logs one truck tip at `payload × fill factor` tonnes,
 stamped with the ore source and the fleet counts running at the time. Space bar tips,
-1–4 pick the ore source. The shift clock starts on the first tip if it is not already
-running.
+1–4 pick the ore source. The shift clock starts on the first tip, measured from the
+changeover rather than from the tip.
 
 **Delays.** Tap a reason chip — No trucks, Crusher, Screen, Loader down, Blast, Weather,
 Shift change, Meal, Other — to open a delay. It runs a clock until you end it, and
@@ -85,6 +85,14 @@ same by-hour and running-total charts. Previous shifts gains *Mill t/h*, *Milled
 trends, *Mill t/h*, *Milled t* and *Tipped vs mill t/h*, and a mill section in each shift's
 detail view and CSV. The ROM pad does not see any of it.
 
+**Previous 24 hours.** Under the previous shift, the watcher's dashboard carries the last full
+production day — a Day shift and the Night shift that follows it, 06:30 to 06:30 — which is
+always the day before the shift running now, so during the night of the 17th it is still the
+16th. Tonnes, loads, t/h over the 24 hours, delay, mill t/h average and total, and COS stock,
+with a line splitting it by shift and saying how many of the 24 hours the mill covers. A
+shift nobody logged says *not logged* rather than counting as zero. It is fetched on its own,
+so the date filter on Previous shifts cannot hide it.
+
 **Corrections.** Tap any row in the load log to fix its time, tonnage or ore source.
 Loads re-sort by time after an edit, so intervals and charts stay honest. Undo last tip
 drops the most recent one.
@@ -100,8 +108,11 @@ Anything stamped after the changeover moves across to the new shift rather than 
 counted against the old one, and a delay still open at the boundary is closed on the old
 shift and reopened on the new one, so neither shift is credited with the other's time.
 
-End shift still stops logging early, and New shift still files the current one by hand —
-both are there for the odd shift that does not run to the clock.
+There is no End shift, New shift or Start shift clock any more. With the changeover closing
+and opening shifts on its own they could only do harm: on 17 Sep End shift followed by New
+shift left a live shift marked as ended, freezing the dashboard, and a pad left on an ended
+shift refuses tips until the next changeover — up to twelve hours. A pad that ended its
+shift before the buttons went reopens it on load if it is still inside that shift's window.
 
 ## Data
 Saved in the browser's local storage on each device (key `tipm8.v1`) — it survives a
