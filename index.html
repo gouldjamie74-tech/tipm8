@@ -172,6 +172,11 @@ tr.pick:hover td{background:rgba(125,211,255,.06)}
 tr.on td{background:rgba(125,211,255,.10)}
 .live-tag{color:var(--amber);font-size:12px}
 body[data-role="rom"] .no-rom{display:none}
+svg .tips rect{fill:transparent;cursor:crosshair}
+svg .tips rect:hover,svg .tips rect.on{fill:rgba(232,238,244,.07)}
+.charttip{position:fixed;z-index:40;pointer-events:none;background:#0B1117;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;line-height:1.45;color:var(--muted);white-space:pre;box-shadow:0 8px 22px rgba(0,0,0,.45);font-variant-numeric:tabular-nums;max-width:calc(100vw - 24px)}
+.charttip b{color:var(--text);font-weight:600}
+.charttip[hidden]{display:none}
 .mill-in{width:96px;text-align:right;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px;min-height:40px;font-variant-numeric:tabular-nums;color:var(--text)}
 .mill-in:focus{outline:2px solid var(--blue);outline-offset:-1px}
 .mill-in:disabled{opacity:.3}
@@ -1035,6 +1040,23 @@ const svgOpen=()=>`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/sv
 const emptyMsg=m=>`<div class="empty">${m}</div>`;
 function niceMax(v,n=4){if(!(v>0))return{max:n,step:1};const raw=v/n,mag=Math.pow(10,Math.floor(Math.log10(raw))),r=raw/mag;const step=(r<=1?1:r<=2?2:r<=5?5:10)*mag;return{max:Math.ceil(v/step)*step,step}}
 function yGrid(max,step,fmt){let s='';for(let v=0;v<=max+1e-9;v+=step){const y=PT+IH-v/max*IH;s+=`<line x1="${PL}" x2="${W-PR}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${PL-8}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt(v)}</text>`}return s}
+/* ---- Hover values ------------------------------------------------------------------------
+   Every chart lays invisible full-height columns over its plot — one per block, load, hour or
+   shift — each carrying the values at that point, and one tooltip follows the pointer across
+   all of them. Full height means a thin line or a short bar is as easy to hit as a tall one,
+   and a tap does the same job as a hover, so it works under a finger on the pad. */
+function tipCols(cols){
+  return '<g class="tips">'+cols.map(c=>{
+    const x0=Math.max(PL,c.x0), w=Math.max(1,Math.min(W-PR,c.x1)-x0);
+    return `<rect x="${x0.toFixed(1)}" y="${PT}" width="${w.toFixed(1)}" height="${IH}" data-tip="${esc(c.lines.filter(Boolean).join('\n'))}"/>`;
+  }).join('')+'</g>';
+}
+/* For a line through points at uneven spacing: each point owns the ground halfway to its
+   neighbours, so the tooltip snaps to whichever point is nearest the pointer. */
+const tipNearest=pts=>tipCols(pts.map((p,i)=>({lines:p.lines,
+  x0:i?(pts[i-1].x+p.x)/2:PL, x1:i<pts.length-1?(p.x+pts[i+1].x)/2:W-PR})));
+const cap=t=>t.charAt(0).toUpperCase()+t.slice(1);
+
 const hline=(y,color,dash)=>`<line x1="${PL}" x2="${W-PR}" y1="${y}" y2="${y}" stroke="${color}" stroke-width="1.5"${dash?' stroke-dasharray="6 5"':''}/>`;
 const yOf=(v,max)=>PT+IH-Math.min(v,max)/max*IH;
 
@@ -1057,6 +1079,11 @@ function renderTph(){
   });
   if(st.tphShift!=null)s+=hline(yOf(st.tphShift,max),'var(--text)');
   if(S.fleet.targetTph>0)s+=hline(yOf(S.fleet.targetTph,max),'var(--amber)',true);
+  s+=tipCols(b.map((x,i)=>({x0:PL+i*bw,x1:PL+(i+1)*bw,lines:[
+    fmtHM(x.t0)+'–'+fmtHM(x.t0+30*60000)+(x.partial?', so far':''),
+    n0(x.tph)+' t/h · '+fmtT(x.tonnes)+' t',
+    ...keys.filter(k=>x.by[k]).map(k=>k+' '+fmtT(x.by[k])+' t'),
+    S.fleet.targetTph>0?'target '+n0(S.fleet.targetTph)+' t/h':'']})));
   el.innerHTML=s+'</svg>';
   $('#tphLegend').innerHTML=ORES.map(o=>`<span><i class="bar" style="background:${o.c}"></i>${o.k}</span>`).join('')+'<span><i></i>shift average</span><span><i class="tgt"></i>target</span>';
 }
@@ -1078,6 +1105,18 @@ function renderCum(){
   s+=`<path d="${path} L${xOf(end).toFixed(1)} ${PT+IH} L${PL} ${PT+IH} Z" fill="var(--blue)" opacity=".12"/>`;
   s+=`<path d="${path}" fill="none" stroke="var(--blue)" stroke-width="2"/>`;
   if(tgtEnd>0)s+=`<line x1="${PL}" y1="${PT+IH}" x2="${xOf(end)}" y2="${yOf(tgtEnd,max)}" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="6 5"/>`;
+  /* the delay bands used to carry native titles, which these columns now sit over, so a delay
+     that ended since the previous load is named in that load's tooltip instead */
+  const spans=stats().spans;
+  let run=0, prevT=start;
+  s+=tipNearest(S.loads.map(l=>{
+    run+=l.tonnes;
+    const dl=spans.filter(d=>d.b>prevT&&d.b<=l.t);prevT=l.t;
+    const pace=S.fleet.targetTph>0?S.fleet.targetTph*(l.t-start)/3600000:null;
+    return{x:xOf(l.t),lines:[fmtHM(l.t),fmtT(run)+' '+P().total,
+      pace!=null?'target pace '+fmtT(pace)+' t, '+signed(run-pace):'',
+      ...dl.map(d=>'after '+d.reason+', '+fmtDur(d.ms))]};
+  }));
   el.innerHTML=s+'</svg>';
 }
 
@@ -1097,6 +1136,11 @@ function renderInt(){
   });
   s+=hline(yOf(avgMin,max),'var(--text)');
   if(tgtMin>0)s+=hline(yOf(tgtMin,max),'var(--amber)',true);
+  s+=tipCols(st.ints.map((ms,i)=>({x0:PL+i*bw,x1:PL+(i+1)*bw,lines:[
+    cap(P().one)+' '+(i+2)+' at '+fmtHM(S.loads[i+1].t),
+    fmtDur(ms)+' since the last',
+    'average '+fmtDur(st.avgInt),
+    st.target!=null?'target '+fmtDur(st.target)+(ms>st.target?', over':''):'']})));
   el.innerHTML=s+'</svg>';
 }
 
@@ -1224,6 +1268,10 @@ function renderShiftDetail(){
     g+=`<rect x="${X}" y="${PT+IH-hh}" width="${Math.max(1,bw-gap)}" height="${hh}" rx="2" fill="${low?'var(--amber)':'var(--blue)'}" opacity=".85"/>`;
     if(nH<=14||i%2===0)g+=`<text x="${X+(bw-gap)/2}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${pad(new Date(a+i*3600000).getHours())}</text>`;
   });
+  g+=tipCols(buckets.map((v,i)=>({x0:PL+i*bw,x1:PL+(i+1)*bw,lines:[
+    fmtHM(a+i*3600000)+'–'+fmtHM(a+(i+1)*3600000),
+    fmtT(v)+' t in the hour',
+    tgt>0?(v>=tgt?'at or above':'under')+' the '+n0(tgt)+' t/h target':'']})));
   $('#hdHours').innerHTML=g+'</svg>'
     +'<div class="legend"><span><i class="bar"></i>at or above target</span>'
     +'<span><i class="bar" style="background:var(--amber)"></i>under target</span>'
@@ -1300,6 +1348,12 @@ function renderHist(){
     s+=`<rect x="${X}" y="${PT+IH-hh}" width="${Math.max(1,bw-gap)}" height="${hh}" rx="2" fill="${fill}" opacity="${op}"/>`;
     s+=`<text x="${X+(bw-gap)/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(x.name[0]+' '+fmtDate(dOf(x.date)))}</text>`;
   });
+  s+=tipCols(h.map((x,i)=>({x0:PL+i*bw,x1:PL+(i+1)*bw,lines:[
+    (x.name==='Night'?'Night':'Day')+' shift, '+fmtDate(dOf(x.date))+(x.open?', running':''),
+    fmtT(x.tonnes)+' t · '+n0(x.tph)+' t/h · '+x.loads+' '+P().many,
+    'delay '+(x.delay?fmtDur(x.delay):'none'),
+    x.milled!=null?'mill '+n0(millAvg(x))+' t/h avg, '+fmtT(x.milled)+' t over '+x.milledHours+' h':'',
+    x.milled!=null&&tipAvg(x)!=null?'tipped '+n0(tipAvg(x))+' t/h over the same hours':'']})));
   el.innerHTML=s+'</svg>'
     +'<div class="legend"><span><i class="bar"></i>Day</span>'
     +'<span><i class="bar" style="background:var(--night)"></i>Night</span>'
@@ -1421,6 +1475,14 @@ function renderReconChart(r){
   const path=pts=>pts.map((q,i)=>(i?'L':'M')+xOf(q[0]).toFixed(1)+' '+yOf(q[1],max).toFixed(1)).join(' ');
   s+=`<path d="${path(rp)}" fill="none" stroke="var(--amber)" stroke-width="2"/>`;
   s+=`<path d="${path(cp)}" fill="none" stroke="var(--blue)" stroke-width="2"/>`;
+  const ev=r.romL.map(l=>({t:l.t,n:l.tonnes,p:'rom'})).concat(r.cosL.map(l=>({t:l.t,n:l.tonnes,p:'cos'})))
+    .sort((a,b)=>a.t-b.t);
+  const pts=[];let rt=0,ct=0;
+  ev.forEach(e=>{if(e.p==='rom')rt+=e.n;else ct+=e.n;
+    const last=pts[pts.length-1], row={t:e.t,rt,ct};
+    if(last&&last.t===e.t)pts[pts.length-1]=row;else pts.push(row)});
+  s+=tipNearest(pts.map(q=>({x:xOf(q.t),lines:[fmtHM(q.t),
+    'ROM pad '+fmtT(q.rt)+' t','COS '+fmtT(q.ct)+' t','gap '+signed(q.rt-q.ct)+' t']})));
   el.innerHTML=s+'</svg>';
 }
 
@@ -1686,6 +1748,11 @@ function millBarsSvg(rows){
   const avg=millSum(rows).rate;
   if(avg!=null){const y=yOf(avg,max).toFixed(1);
     g+=`<line x1="${PL}" x2="${W-PR}" y1="${y}" y2="${y}" stroke="var(--green)" stroke-width="1.5" stroke-dasharray="5 4"/>`}
+  g+=tipCols(rows.map((r,i)=>({x0:PL+i*bw,x1:PL+(i+1)*bw,lines:[hourLabel(r.h),
+    'tipped '+(r.started?fmtT(r.tipped)+' t':'—'),
+    r.milled!=null?'mill '+fmtT(r.milled)+' t/h':(r.closed?'mill not recorded':''),
+    r.milled!=null?'difference '+signed(r.tipped-r.milled):'',
+    avg!=null?'shift mill average '+n0(avg)+' t/h':'']})));
   return g+'</svg>';
 }
 function millCumSvg(rows){
@@ -1700,7 +1767,9 @@ function millCumSvg(rows){
       +pts.map(p=>'L'+xOf(p.i).toFixed(1)+' '+yOf(p[key],max).toFixed(1)).join(' ')
       +`" fill="none" stroke="${col}" stroke-width="2"/>`
       +pts.map(p=>`<circle cx="${xOf(p.i).toFixed(1)}" cy="${yOf(p[key],max).toFixed(1)}" r="2.5" fill="${col}"/>`).join('');
-  return g+line('ct','var(--blue)')+line('cm','var(--green)')+'</svg>';
+  return g+line('ct','var(--blue)')+line('cm','var(--green)')
+    +tipNearest(pts.map(p=>({x:xOf(p.i),lines:['to '+pad(new Date(rows[p.i-1].h+HOUR).getHours())+':00',
+      'tipped '+fmtT(p.ct)+' t','milled '+fmtT(p.cm)+' t','COS stock '+signed(p.ct-p.cm)]})))+'</svg>';
 }
 
 function renderMill(){
@@ -2016,6 +2085,28 @@ $('#histBody').addEventListener('click',e=>{
 });
 $('#hdClose').addEventListener('click',closeShift);
 $('#histMetric').addEventListener('change',e=>{histMetric=e.target.value;renderHist()});
+const tipBox=document.createElement('div');tipBox.className='charttip';tipBox.hidden=true;document.body.appendChild(tipBox);
+let tipOn=null;
+function showTip(el,x,y){
+  if(tipOn!==el){
+    if(tipOn)tipOn.classList.remove('on');
+    tipOn=el;el.classList.add('on');
+    tipBox.innerHTML=(el.getAttribute('data-tip')||'').split('\n').map((l,i)=>i?esc(l):'<b>'+esc(l)+'</b>').join('\n');
+    tipBox.hidden=false;
+  }
+  const r=tipBox.getBoundingClientRect(), edge=12;
+  let left=x+16, top=y-r.height-14;
+  if(left+r.width>innerWidth-edge)left=x-r.width-16;
+  if(left<edge)left=edge;
+  if(top<edge)top=Math.min(y+20,innerHeight-r.height-edge);
+  tipBox.style.left=left+'px';tipBox.style.top=top+'px';
+}
+function hideTip(){if(tipOn)tipOn.classList.remove('on');tipOn=null;tipBox.hidden=true}
+const tipTarget=e=>e.target&&e.target.closest?e.target.closest('svg .tips [data-tip]'):null;
+document.addEventListener('pointermove',e=>{const t=tipTarget(e);if(t)showTip(t,e.clientX,e.clientY);else if(tipOn)hideTip()},{passive:true});
+document.addEventListener('pointerdown',e=>{const t=tipTarget(e);if(t)showTip(t,e.clientX,e.clientY);else hideTip()},{passive:true});
+document.documentElement.addEventListener('mouseleave',hideTip);
+window.addEventListener('scroll',hideTip,{passive:true});
 window.addEventListener('online',()=>{if(party())drain();if(party()==='cos')drainMill();if(viewing())pull()});
 $('#millBody').addEventListener('change',e=>{
   const i=e.target.closest('.mill-in'); if(!i)return;

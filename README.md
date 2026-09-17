@@ -369,4 +369,8 @@ Bump `CACHE` in `sw.js` if you ever need to force every device to drop its cache
 ## Notes
 - Ore sources are listed in `ORES` near the top of the script — edit names or colours
   there. Delay reasons are in `REASONS` just below.
-- Charts are hand-rolled SVG; there is no charting library to update.
+- Charts are hand-rolled SVG; there is no charting library to update. Hover over any chart —
+  or tap it on the pad — for the values at that point: each chart lays invisible full-height
+  columns over its plot (one per block, load, hour or shift) built with `tipCols`, or
+  `tipNearest` for a line through unevenly spaced points, and one shared tooltip follows the
+  pointer. A new chart gets the same by adding columns before its closing `</svg>`.
