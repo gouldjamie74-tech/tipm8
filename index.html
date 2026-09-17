@@ -704,6 +704,7 @@ async function pull(){
     }
     if(d)millServer=Array.isArray(d.milled);    /* the key is only there once the database has been updated */
     if(party()==='cos')millFromLog(d);
+    adoptCorrections(d);
     remote={rom:rowsFor(d,'rom'),cos:rowsFor(d,'cos'),at:now()};
     prevShift=(d&&d.prev)||null;
     lastPull=now();syncErr=null;
@@ -1600,6 +1601,26 @@ function millFromLog(d){
   Object.keys(log).forEach(h=>{if(!(h in out)&&m.t[h]!==log[h]){m.t[h]=log[h];changed=true}});
   if(changed)store.set(KEY,JSON.stringify(S));
   if(Object.keys(S.millOut).length)scheduleMill(1500);
+}
+
+/* A load corrected in the database — its time, ore or tonnage set from the office — is taken
+   back into this pad's own log, so the pad stops re-sending the old values and the correction
+   becomes its own. The database holds the correction until then and releases the row once the
+   pad's copy matches. Only this pad's party, only its live shift, only rows marked corrected. */
+function adoptCorrections(d){
+  const mine=party();
+  if(!mine||!d||!d.shift||!Array.isArray(d.loads))return false;
+  if(!sameKey({date:d.shift.shift_date,name:d.shift.shift_name},keyOf(S.shift)))return false;
+  const byId=new Map(S.loads.map(l=>[l.id,l]));
+  let changed=false;
+  d.loads.forEach(r=>{
+    if(r.party!==mine||!r.corrected_at)return;
+    const l=byId.get(r.id), t=Date.parse(r.logged_at), tn=+r.tonnes, ore=r.ore||'';
+    if(!l||!isFinite(t)||!isFinite(tn))return;
+    if(l.t!==t||(l.ore||'')!==ore||l.tonnes!==tn){l.t=t;l.ore=ore;l.tonnes=tn;changed=true}
+  });
+  if(changed){S.loads.sort((a,b)=>a.t-b.t);save()}
+  return changed;
 }
 
 function millBarsSvg(rows){

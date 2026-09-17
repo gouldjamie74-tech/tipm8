@@ -283,6 +283,7 @@ From milled tonnes onward, migrations are also kept in `sql/`, because they have
 applied by hand whenever the database connection is not available to whoever wrote them:
 
     sql/2026-09-17_milled_tonnes.sql           milled table, sync_milled, milled on the reads
+    sql/2026-09-17_load_corrections.sql        corrections that stick; a live shift can't stay ended
 
 Each one is safe to run twice. Paste it into the Supabase SQL editor and run it. Until
 `2026-09-17_milled_tonnes.sql` has been applied the page still works: the COS pad keeps
@@ -299,6 +300,20 @@ To read what is actually deployed rather than trusting this file:
 `backup.deleted_shifts` holds shifts removed by hand, as a JSON blob per shift. It sits
 in a `backup` schema rather than `public` on purpose: PostgREST only exposes `public`, so
 nothing there is reachable with the publishable key.
+
+**Correcting a load from the office.** The pad owns its rows and re-sends its own copy of
+every load on each sync, so a plain edit here lasts only until the next tip. Set
+`loads.corrected_at = now()` alongside the change instead: `sync_party` then keeps that
+row's time, ore and tonnage while the pad is still sending the old ones, the page adopts
+the correction into the pad's own log on its next poll, and the mark clears itself the
+first time the pad's copy matches — after which the pad owns the row again. First used on
+17 Sep to spread thirteen catch-up loads, tapped in 33 seconds at 07:28, back across the
+unattended hour from 06:30.
+
+**A live shift cannot stay ended.** End shift followed by New shift used to leave the
+shift marked as ended while trucks kept tipping into it, freezing elapsed on the dashboard.
+A pad contributing loads or delays now sets or clears the end time; a silent pad still
+cannot touch it.
 
 Deleting a shift from the database does not make it stay deleted. A device that still
 holds that shift as its current shift re-sends it on the next sync and `sync_party`
