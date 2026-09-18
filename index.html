@@ -172,6 +172,19 @@ tr.pick:hover td{background:rgba(125,211,255,.06)}
 tr.on td{background:rgba(125,211,255,.10)}
 .live-tag{color:var(--amber);font-size:12px}
 body[data-role="rom"] .no-rom{display:none}
+.millq{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:12px;background:var(--surface)}
+.millq[hidden]{display:none}
+.millq.due{border-color:#4C3A12;background:#2B1E07}
+.millq-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:14px}
+.millq-h b{font-weight:500}
+.millq-h .over{color:var(--amber);font-size:13px}
+.millq-row{display:flex;gap:8px;margin-top:9px}
+.millq-row input{flex:1;min-width:0;text-align:left;font-size:17px;min-height:48px;background:var(--bg);
+  border:1px solid var(--line);border-radius:8px;padding:0 12px;color:var(--text);font-variant-numeric:tabular-nums}
+.millq-row input:focus{outline:2px solid var(--blue);outline-offset:-1px}
+.millq-row input:disabled{opacity:.4}
+.millq-row .btn{min-width:88px}
+.millq .note{margin-top:7px}
 svg .tips rect{fill:transparent;cursor:crosshair}
 svg .tips rect:hover,svg .tips rect.on{fill:rgba(232,238,244,.07)}
 .charttip{position:fixed;z-index:40;pointer-events:none;background:#0B1117;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;line-height:1.45;color:var(--muted);white-space:pre;box-shadow:0 8px 22px rgba(0,0,0,.45);font-variant-numeric:tabular-nums;max-width:calc(100vw - 24px)}
@@ -303,6 +316,15 @@ tr.edit:hover td{background:var(--surface)}
       <span><span id="sinceLabel">Since last tip</span> <b id="sinceLast">—</b></span>
       <button class="link" id="undoBtn">Undo last tip</button>
     </div>
+    <div class="millq writer no-rom" id="millQuick" hidden>
+      <div class="millq-h"><b id="mqWhen">Mill t/h</b><span class="over" id="mqOver" hidden></span></div>
+      <div class="millq-row">
+        <input type="text" inputmode="decimal" id="mqIn" autocomplete="off" placeholder="t/h" aria-label="Mill tonnes per hour">
+        <button class="btn primary" id="mqSave">Save</button>
+      </div>
+      <div class="note" id="mqNote"></div>
+    </div>
+
     <div class="chips writer" id="delayChips"></div>
     <div class="note writer" id="delayNote">Tap a reason to open a delay. Logging a tip closes it.</div>
     <div class="delay-live writer" id="delayLive" hidden>
@@ -1772,7 +1794,44 @@ function millCumSvg(rows){
       'tipped '+fmtT(p.ct)+' t','milled '+fmtT(p.cm)+' t','COS stock '+signed(p.ct-p.cm)]})))+'</svg>';
 }
 
+/* The hour to record, under the Tip button where the operator already is. It asks for the
+   oldest closed hour that has no reading, so catching up works oldest first, and turns amber
+   while any hour is outstanding. The full table in Tipped against milled still takes
+   back-entry and corrections. */
+function renderMillQuick(){
+  const box=$('#millQuick'), inp=$('#mqIn');
+  if(party()!=='cos'){box.hidden=true;return}
+  box.hidden=false;
+  const m=ensureMill(), rows=millRows(m.key,S.loads,m.t);
+  const due=rows.filter(r=>r.closed&&r.milled==null), run=rows.find(r=>r.started&&!r.closed);
+  const target=due[0]||null;
+  box.classList.toggle('due',!!target);
+  $('#mqOver').hidden=due.length<2;
+  $('#mqOver').textContent=due.length<2?'':due.length+' hours to catch up';
+  if(target){
+    $('#mqWhen').textContent='Mill t/h for '+hourLabel(target.h);
+    inp.disabled=false;inp.dataset.h=String(target.h);inp.placeholder='t/h';
+    $('#mqNote').textContent=fmtT(target.tipped)+' t tipped to the COS in that hour'
+      +(due.length>1?' · oldest first':'');
+  }else{
+    $('#mqWhen').textContent='Mill t/h'+(run?' · next at '+pad(new Date(run.h+HOUR).getHours())+':00':'');
+    inp.disabled=true;delete inp.dataset.h;inp.placeholder='—';
+    $('#mqNote').textContent=run?'Every closed hour is recorded. '+hourLabel(run.h)+' is still running.'
+      :'Every hour of the shift is recorded.';
+  }
+  if(document.activeElement!==inp)inp.value='';
+}
+function saveMillQuick(){
+  const inp=$('#mqIn'), h=+inp.dataset.h;
+  if(!h||inp.disabled)return;
+  if(!inp.value.trim()){inp.focus();return}
+  if(setMilled(h,inp.value)===false){alert('The mill reading needs a number, for example 520.');inp.select();return}
+  inp.value='';inp.blur();
+  renderMill();renderDash();
+}
+
 function renderMill(){
+  renderMillQuick();
   const cos=party()==='cos';
   if(!cos&&!viewing())return;               /* the ROM pad does not see this section */
   const m=ensureMill(), k=m.key, rows=millRows(k,S.loads,m.t), sm=millSum(rows);
@@ -2108,6 +2167,8 @@ document.addEventListener('pointerdown',e=>{const t=tipTarget(e);if(t)showTip(t,
 document.documentElement.addEventListener('mouseleave',hideTip);
 window.addEventListener('scroll',hideTip,{passive:true});
 window.addEventListener('online',()=>{if(party())drain();if(party()==='cos')drainMill();if(viewing())pull()});
+$('#mqSave').addEventListener('click',saveMillQuick);
+$('#mqIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveMillQuick()}});
 $('#millBody').addEventListener('change',e=>{
   const i=e.target.closest('.mill-in'); if(!i)return;
   const h=+i.dataset.h;

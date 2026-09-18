@@ -52,8 +52,15 @@ rather than converted from tph, so correcting a tonnage in the load log cannot d
 rate away from the actual count. It needs five minutes of shift before it will show a
 rate at all, and a target before it will show anything to judge against.
 
-**Mill readings.** The COS pad has a *Tipped against milled* section at the head of the
-right-hand column: a row for each hour of the shift, where the operator records the mill's
+**Mill readings.** Under the Tip button, where the operator already is, a box asks for one
+hour at a time: it names the hour to record, shows what was tipped to the COS in it, and turns
+amber while any closed hour is unrecorded, saying how many are outstanding. It always asks for
+the oldest unrecorded hour, so catching up runs oldest first, and once every closed hour is in
+it names the hour that closes next. It is the COS pad only — watchers and the ROM pad never
+see it.
+
+The same readings live in a *Tipped against milled* section at the head of the
+right-hand column, which is where back-entry and corrections happen: a row for each hour of the shift, where the operator records the mill's
 t/h once the hour closes. Blank clears an hour. The shift figure is the **average of the
 hourly readings**, shown beside their **total**; an hour's reading is also that hour's
 tonnes, which is why the two agree. Beside each reading sits what was tipped to the COS in
