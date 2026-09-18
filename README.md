@@ -100,6 +100,10 @@ with a line splitting it by shift and saying how many of the 24 hours the mill c
 shift nobody logged says *not logged* rather than counting as zero. It is fetched on its own,
 so the date filter on Previous shifts cannot hide it.
 
+**The load log** holds the most recent 20 and folds the rest away — a busy shift runs past two
+hundred and stops being readable. *Show all* opens it, and the numbering and running total are
+always of the whole shift, not of what is showing.
+
 **Corrections.** Tap any row in the load log to fix its time, tonnage or ore source.
 Loads re-sort by time after an edit, so intervals and charts stay honest. Undo last tip
 drops the most recent one.

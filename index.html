@@ -1406,12 +1406,24 @@ function renderHist(){
   }).join('');
 }
 
+/* A busy shift runs past two hundred loads and the log stops being readable, so it holds the
+   most recent stretch and folds the rest away. The count stays honest either way: the numbering
+   and running total are of the whole shift, not of what is showing. */
+const LOG_SHOWN=20;
+let logAll=false;
 function renderLog(){
   const tb=$('#logBody');
   if(!S.loads.length){tb.innerHTML='<tr><td colspan="8" class="empty">No loads logged this shift.</td></tr>';return}
   let cum=0;
-  const rows=S.loads.map((l,i)=>{cum+=l.tonnes;return{i,l,cum,int:i?l.t-S.loads[i-1].t:null}}).reverse();
-  tb.innerHTML=rows.map(r=>`<tr class="${viewing()?'':'edit'}" data-edit="${r.i}"><td>${r.i+1}</td><td>${fmtTime(r.l.t)}</td><td><span style="color:${oreColor(r.l.ore)}">${esc(r.l.ore||'—')}</span></td><td class="r">${r.l.tonnes.toFixed(1)}</td><td class="r">${fmtDur(r.int)}</td><td class="r">${fmtT(r.cum)}</td><td>${r.l.trucks}/${r.l.exc}/${r.l.ldr}</td><td><button class="x" data-del="${r.i}" aria-label="Delete load ${r.i+1}">×</button></td></tr>`).join('');
+  const all=S.loads.map((l,i)=>{cum+=l.tonnes;return{i,l,cum,int:i?l.t-S.loads[i-1].t:null}}).reverse();
+  const folded=!logAll&&all.length>LOG_SHOWN, rows=folded?all.slice(0,LOG_SHOWN):all;
+  const more=folded
+    ?'<tr><td colspan="8"><button type="button" class="link" data-logall="1">Show all '+all.length+' '+P().many+'</button>'
+      +' <span class="note" style="margin:0">'+(all.length-LOG_SHOWN)+' older hidden</span></td></tr>'
+    :all.length>LOG_SHOWN
+      ?'<tr><td colspan="8"><button type="button" class="link" data-logall="0">Show the last '+LOG_SHOWN+' only</button></td></tr>'
+      :'';
+  tb.innerHTML=rows.map(r=>`<tr class="${viewing()?'':'edit'}" data-edit="${r.i}"><td>${r.i+1}</td><td>${fmtTime(r.l.t)}</td><td><span style="color:${oreColor(r.l.ore)}">${esc(r.l.ore||'—')}</span></td><td class="r">${r.l.tonnes.toFixed(1)}</td><td class="r">${fmtDur(r.int)}</td><td class="r">${fmtT(r.cum)}</td><td>${r.l.trucks}/${r.l.exc}/${r.l.ldr}</td><td><button class="x" data-del="${r.i}" aria-label="Delete load ${r.i+1}">×</button></td></tr>`).join('')+more;
 }
 
 let lastChart=0;
@@ -2187,6 +2199,8 @@ $('#shiftLabel').addEventListener('input',e=>{S.shift.label=e.target.value.trim(
 $('#oreSel').addEventListener('click',e=>{const b=e.target.closest('[data-ore]');if(!b)return;S.ore=b.dataset.ore;save();renderOre();renderShiftControls()});
 document.addEventListener('keydown',e=>{const i=['1','2','3','4'].indexOf(e.key);if(i>-1&&!modalOpen()&&!/INPUT/.test(document.activeElement.tagName)){S.ore=ORES[i].k;save();renderOre();renderShiftControls()}});
 $('#logBody').addEventListener('click',e=>{
+  const a=e.target.closest('[data-logall]');
+  if(a){logAll=a.dataset.logall==='1';return renderLog()}
   const d=e.target.closest('[data-del]');
   if(d)return del(+d.dataset.del);
   const r=e.target.closest('[data-edit]');
