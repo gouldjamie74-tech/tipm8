@@ -54,12 +54,12 @@ input.text::placeholder{color:var(--muted)}
 .btn.primary{background:var(--blue);color:#06212E;border-color:var(--blue)}
 .btn.danger{color:var(--red);border-color:#4A2A2A}
 .btn:disabled{opacity:.35;cursor:not-allowed}
-.ore{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.ore{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:6px;margin-bottom:10px}
 .ore button{min-height:48px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-weight:500;font-size:14px;padding:0 4px;color:var(--muted)}
 .ore button[aria-pressed="true"]{color:var(--ore);border-color:var(--ore);box-shadow:inset 0 0 0 1px var(--ore)}
 .split-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface);margin-top:18px}
 .split-bar i{display:block;height:100%}
-.split-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.split-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:8px;margin-top:10px}
 .split-list .n{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .split-list .n::before{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--ore);margin-right:6px;vertical-align:0}
 .split-list .v{font-family:var(--serif);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums;font-variation-settings:"opsz" 144;line-height:1.1}
@@ -558,7 +558,8 @@ const store=(()=>{let mem={},ok=false;
 })();
 
 const KEY='tipm8.v1';
-const ORES=[{k:'Kopra',c:'#7DD3FF'},{k:'Toka',c:'#7EE0A6'},{k:'Marawuwung',c:'#C4A6FF'},{k:'Araren',c:'#FF8DA1'}];
+const ORES=[{k:'Kopra',c:'#7DD3FF'},{k:'Toka',c:'#7EE0A6'},{k:'Marawuwung',c:'#C4A6FF'},{k:'Araren',c:'#FF8DA1'},
+            {k:'Scats',c:'#9FB2C6'}];
 const oreColor=k=>(ORES.find(o=>o.k===k)||{c:'#8A9BAE'}).c;
 const REASONS=['No trucks','Crusher','Screen','Loader down','Blast','Weather','Shift change','Meal','Other'];
 /* Passcode on the two logging roles. Off and Watching stay open, so anyone can be handed
@@ -2197,7 +2198,7 @@ $('#delayBody').addEventListener('click',e=>{const b=e.target.closest('[data-dde
 $('#clearBtn').addEventListener('click',clearAll);
 $('#shiftLabel').addEventListener('input',e=>{S.shift.label=e.target.value.trim();save()});
 $('#oreSel').addEventListener('click',e=>{const b=e.target.closest('[data-ore]');if(!b)return;S.ore=b.dataset.ore;save();renderOre();renderShiftControls()});
-document.addEventListener('keydown',e=>{const i=['1','2','3','4'].indexOf(e.key);if(i>-1&&!modalOpen()&&!/INPUT/.test(document.activeElement.tagName)){S.ore=ORES[i].k;save();renderOre();renderShiftControls()}});
+document.addEventListener('keydown',e=>{const i=ORES.findIndex((o,n)=>String(n+1)===e.key);if(i>-1&&!modalOpen()&&!/INPUT/.test(document.activeElement.tagName)){S.ore=ORES[i].k;save();renderOre();renderShiftControls()}});
 $('#logBody').addEventListener('click',e=>{
   const a=e.target.closest('[data-logall]');
   if(a){logAll=a.dataset.logall==='1';return renderLog()}

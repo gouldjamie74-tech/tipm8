@@ -20,7 +20,7 @@ Open `index.html` in a browser, or in VS Code use the Live Server extension
 
 **Tipping.** The amber button logs one truck tip at `payload × fill factor` tonnes,
 stamped with the ore source and the fleet counts running at the time. Space bar tips,
-1–4 pick the ore source. The shift clock starts on the first tip, measured from the
+The number keys pick the ore source, one per source in the order they are listed. The shift clock starts on the first tip, measured from the
 changeover rather than from the tip.
 
 **Delays.** Tap a reason chip — No trucks, Crusher, Screen, Loader down, Blast, Weather,
