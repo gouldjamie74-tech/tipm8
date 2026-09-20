@@ -56,7 +56,7 @@ input.text::placeholder{color:var(--muted)}
 .btn:disabled{opacity:.35;cursor:not-allowed}
 .ore{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:6px;margin-bottom:10px}
 .ore button{min-height:48px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-weight:500;font-size:14px;padding:0 4px;color:var(--muted)}
-.ore button[aria-pressed="true"]{color:var(--ore-ink,var(--ore));border-color:var(--ore);box-shadow:inset 0 0 0 1px var(--ore)}
+.ore button[aria-pressed="true"]{color:var(--ore);border-color:var(--ore);box-shadow:inset 0 0 0 1px var(--ore)}
 .split-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface);margin-top:18px}
 .split-bar i{display:block;height:100%}
 .split-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:8px;margin-top:10px}
@@ -558,19 +558,14 @@ const store=(()=>{let mem={},ok=false;
 })();
 
 const KEY='tipm8.v1';
-/* The ore key as the feed report draws it, shared with BlendM8 so a source is the same colour
-   wherever it is read. These are chosen for a white report page, and three of them are too
-   dark to read as text on this ground, so anywhere the colour becomes type it is lifted
-   toward the page's own text colour first. The swatch, the bar and the chart keep the hex. */
-const ORES=[{k:'Kopra',c:'#922B21'},{k:'Toka',c:'#1E8449'},{k:'Marawuwung',c:'#B7950B'},{k:'Araren',c:'#7D3C98'},
-            {k:'Scats',c:'#E67E22'}];
+/* Ore Source Colours v1.0, the site standard held by the control room, shared with BlendM8 so
+   a source is the same colour wherever it is read. These are the standard's own dark variants,
+   which is what it publishes for a dark background — the colour is used as type on the ore
+   buttons, and a variant measured against a dark ground beats one lightened by guesswork here.
+   Marawuwung is the oxide source, which is what the pad means by the bare name. */
+const ORES=[{k:'Kopra',c:'#AC5E56'},{k:'Toka',c:'#1D8348'},{k:'Marawuwung',c:'#AE862B'},{k:'Araren',c:'#0E9BD0'},
+            {k:'Scats',c:'#85929E'}];
 const oreColor=k=>(ORES.find(o=>o.k===k)||{c:'#8A9BAE'}).c;
-const mix=(hex,to,f)=>{
-  const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
-  const a=p(hex), b=p(to);
-  return '#'+a.map((v,i)=>Math.round(v+(b[i]-v)*f).toString(16).padStart(2,'0')).join('');
-};
-const oreInk=k=>mix(oreColor(k),'#E8EEF4',0.42);
 const REASONS=['No trucks','Crusher','Screen','Loader down','Blast','Weather','Shift change','Meal','Other'];
 /* Passcode on the two logging roles. Off and Watching stay open, so anyone can be handed
    the link to watch a shift, and only someone with the code can start writing trucks
@@ -1008,7 +1003,7 @@ function renderParty(){
 }
 
 function renderOre(){
-  $('#oreSel').innerHTML=ORES.map(o=>`<button type="button" data-ore="${o.k}" style="--ore:${o.c};--ore-ink:${oreInk(o.k)}" aria-pressed="${S.ore===o.k}">${o.k}</button>`).join('');
+  $('#oreSel').innerHTML=ORES.map(o=>`<button type="button" data-ore="${o.k}" style="--ore:${o.c}" aria-pressed="${S.ore===o.k}">${o.k}</button>`).join('');
 }
 function renderSplit(){
   const st=stats(), tot=st.cum||0;
@@ -1993,7 +1988,7 @@ function openEdit(i){
   $('#eTime').focus();
 }
 function renderEditOre(){
-  $('#eOre').innerHTML=ORES.map(o=>`<button type="button" data-eore="${o.k}" style="--ore:${o.c};--ore-ink:${oreInk(o.k)}" aria-pressed="${editOre===o.k}">${o.k}</button>`).join('');
+  $('#eOre').innerHTML=ORES.map(o=>`<button type="button" data-eore="${o.k}" style="--ore:${o.c}" aria-pressed="${editOre===o.k}">${o.k}</button>`).join('');
 }
 function closeEdit(){$('#editModal').hidden=true;editIx=null}
 function saveEdit(){
