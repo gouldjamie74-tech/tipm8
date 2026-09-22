@@ -2234,8 +2234,11 @@ async function exportShiftCsv(id){
       loads.filter(l=>l.party!=='rom').map(l=>({t:Date.parse(l.logged_at),tonnes:+l.tonnes||0})),millMap(d.milled));
     const ms=millSum(mr), r1=v=>Math.round(v*10)/10;
     rows.push([]);
-    rows.push(['hour_start_iso','hour','tipped_to_cos_t','mill_tph','tipped_less_mill_t']);
-    mr.forEach(r=>rows.push([iso(r.h),hourLabel(r.h),r1(r.tipped),r.milled==null?'':r.milled,r.milled==null?'':r1(r.tipped-r.milled)]));
+    const estAt={};
+    (d.milled||[]).forEach(m=>{const h=Date.parse(m.hour_start);if(isFinite(h))estAt[h]=!!m.estimated});
+    rows.push(['hour_start_iso','hour','tipped_to_cos_t','mill_tph','basis','tipped_less_mill_t']);
+    mr.forEach(r=>rows.push([iso(r.h),hourLabel(r.h),r1(r.tipped),r.milled==null?'':r.milled,
+      r.milled==null?'':(estAt[r.h]?'estimated':'reading'),r.milled==null?'':r1(r.tipped-r.milled)]));
     rows.push([]);
     rows.push(['mill_hours_recorded','mill_tph_average','mill_total_t','tipped_tph_same_hours','cos_stock_change_t']);
     rows.push([ms.hours,r1(ms.rate),r1(ms.milled),r1(ms.tippedRate),r1(ms.stock)]);
@@ -2356,9 +2359,11 @@ function fullCsvRows(d){
   if(milled.length){
     rows.push([]);
     rows.push(['MILL, BY HOUR']);
-    rows.push(['date','shift','hour_start_iso','hour','mill_tph']);
-    milled.forEach(m=>rows.push([m.shift_date,m.shift_name,iso(+m.hour_start),
-      hourLabel(+m.hour_start),m.tonnes==null?'':m.tonnes]));
+    rows.push(['date','shift','hour_start_iso','hour','mill_tph','basis','source']);
+    /* hour_start arrives as an ISO string from the database, not a number */
+    milled.forEach(m=>{const h=Date.parse(m.hour_start);
+      rows.push([m.shift_date,m.shift_name,isFinite(h)?iso(h):'',isFinite(h)?hourLabel(h):'',
+        m.tonnes==null?'':m.tonnes,m.estimated?'estimated':'reading',m.device||''])});
   }
   return rows;
 }

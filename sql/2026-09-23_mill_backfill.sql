@@ -1,0 +1,28 @@
+-- Mill hours backfilled from the met workbook, 12–21 September 2026.
+--
+-- TipM8 started logging on 12 September; the mill was only ever read by hand for part of it.
+-- The met workbook (PROCESS LOGSHEETS, public.met_daily.mill_dry_t) has a dry tonnes figure for
+-- every day, so the gaps are filled from it. This is a record of what was run once, not
+-- something to run again.
+--
+-- The rule: for each plant day (06:00 to 06:00, which is exactly TipM8's Day + Night mill
+-- hours), the hours an operator actually recorded are left alone, and the remainder of the
+-- day's tonnes is spread evenly across the hours that were empty:
+--
+--     rate = (mill_dry_t - tonnes already recorded) / (24 - hours already recorded)
+--
+-- so the day reconciles to the workbook exactly while no reading is touched. Every row written
+-- carries estimated = true and device = 'met-backfill'.
+--
+-- 13 September has no TipM8 shift at all and was skipped. The 12th and the 14th have only one
+-- shift each, so only those twelve hours were filled and TipM8 holds half of each of those days.
+--
+-- Also corrected here: one reading for 18:00 on 20 September had been filed against the
+-- 21 September Day shift, whose hours run 06:00 to 17:00. It was moved to the 20 September
+-- Night shift, where that hour belongs.
+--
+-- Caveats worth keeping with the data:
+--   * mill_dry_t is dry; the tipped tonnes TipM8 counts are wet as-mined, roughly 10% heavier.
+--     The COS stock figure carries that difference.
+--   * a spread hour is an average, not a measurement. The hour-by-hour comparison is only as
+--     good as the hours an operator actually read.
