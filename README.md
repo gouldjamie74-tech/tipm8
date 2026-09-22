@@ -83,6 +83,15 @@ any hour typed by hand is kept. Twelve identical hours are not twelve readings �
 carried to the database and shown against those hours, so a flat mill line can never be
 mistaken for a mill that actually ran flat.
 
+**The mill hours for 12–21 September were backfilled** from the met workbook, because TipM8 was
+logging for days on which nobody read the mill by hand. For each plant day the hours an operator
+recorded were left alone and the rest of that day's dry tonnes were spread across the hours that
+were empty, so each day reconciles to the workbook while no reading was touched. Those rows carry
+the estimated flag and `met-backfill` as their device, and both CSV exports name the **basis** of
+every mill figure — *reading* or *estimated*. Two things to keep in mind when reading them: the
+workbook figure is **dry** while tipped tonnes are wet as mined, about 10% heavier, and a spread
+hour is an average rather than a measurement.
+
 Hours run on the clock, as the plant reports them and the paper sheets record them: Day
 06:00 to 18:00, Night 18:00 to 06:00. That is half an hour ahead of the 06:30 changeover,
 deliberately — each of a shift's twelve hours has closed before that crew hands over, so the
@@ -334,6 +343,7 @@ applied by hand whenever the database connection is not available to whoever wro
     sql/2026-09-17_load_corrections.sql        corrections that stick; a live shift can't stay ended
     sql/2026-09-22_range_detail.sql            a whole date range in one read, for Export everything
     sql/2026-09-23_milled_estimated.sql        a reading spread from a shift total says so
+    sql/2026-09-23_mill_backfill.sql           a record of the 12-21 Sep backfill; not to be re-run
 
 Each one is safe to run twice. Paste it into the Supabase SQL editor and run it. Until
 `2026-09-17_milled_tonnes.sql` has been applied the page still works: the COS pad keeps
