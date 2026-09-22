@@ -494,6 +494,7 @@ tr.edit:hover td{background:var(--surface)}
       </select>
       <button class="link" id="histClear" type="button">Clear dates</button>
       <button class="link" id="histCsv" type="button">Export these shifts</button>
+      <button class="link" id="histAllCsv" type="button">Export everything</button>
       <span class="note" id="histNote"></span>
     </div>
     <div class="chart">
@@ -2072,6 +2073,138 @@ async function exportShiftCsv(id){
   download('tipm8-'+sh.shift_date+'-'+String(sh.shift_name||'').toLowerCase()+'.csv',toCsv(rows),'text/csv');
 }
 
+/* Everything the database holds for a range, in one file: every load, then the blend by ore
+   for each day, which is the question the geology side actually asks of this log. Built as a
+   pure function of what the range_detail call returns so it can be exercised without a
+   database — the arithmetic here is the part worth being sure of.
+
+   Ore figures are kept per party. ROM pad and COS are two counts of the same material moving,
+   and adding them together would double the day. */
+function fullCsvRows(d){
+  const r1=v=>Math.round((+v||0)*10)/10;
+  const loads=(d.loads||[]), shifts=(d.shifts||[]), delays=(d.delays||[]), milled=(d.milled||[]);
+  const rows=[];
+  rows.push(['TipM8 export','site',d.site||'','from',d['from']||'','to',d['to']||'']);
+  rows.push(['generated',iso(now()),'shifts',shifts.length,'loads',loads.length]);
+
+  /* every load, numbered and accumulated within its own shift and party */
+  rows.push([]);
+  rows.push(['LOADS']);
+  rows.push(['shift_date','shift','party','seq','timestamp_iso','time','ore','tonnes',
+             'interval_s','cumulative_t_in_shift','trucks','excavators','loaders','device','corrected']);
+  const seq={}, cum={}, prev={};
+  loads.forEach(l=>{
+    const k=l.shift_date+'|'+l.shift_name+'|'+l.party, t=Date.parse(l.logged_at), tn=+l.tonnes||0;
+    seq[k]=(seq[k]||0)+1; cum[k]=(cum[k]||0)+tn;
+    rows.push([l.shift_date,l.shift_name,l.party,seq[k],l.logged_at,fmtTime(t),l.ore||'',r1(tn),
+      prev[k]!=null?Math.round((t-prev[k])/1000):'',r1(cum[k]),
+      l.trucks==null?'':l.trucks,l.excavators==null?'':l.excavators,l.loaders==null?'':l.loaders,
+      l.device||'',l.corrected_at?'yes':'']);
+    prev[k]=t;
+  });
+
+  /* the blend, by ore, for each day and for each shift */
+  const roll=(keyOf)=>{
+    const acc={};
+    loads.forEach(l=>{
+      const k=keyOf(l), o=l.ore||'—';
+      acc[k]=acc[k]||{tot:0,n:0,ore:{}};
+      acc[k].ore[o]=acc[k].ore[o]||{t:0,n:0};
+      acc[k].ore[o].t+=(+l.tonnes||0); acc[k].ore[o].n++;
+      acc[k].tot+=(+l.tonnes||0); acc[k].n++;
+    });
+    return acc;
+  };
+  const oreOrder=a=>{
+    const known=ORES.map(o=>o.k).filter(k=>a[k]);
+    return known.concat(Object.keys(a).filter(k=>known.indexOf(k)<0).sort());
+  };
+  const byDay=roll(l=>l.shift_date+'|'+l.party);
+  rows.push([]);
+  rows.push(['BLEND BY ORE, BY DAY']);
+  rows.push(['date','party','ore','loads','tonnes','share_of_day_pct','day_loads','day_tonnes']);
+  Object.keys(byDay).sort().forEach(k=>{
+    const [date,party]=k.split('|'), a=byDay[k];
+    oreOrder(a.ore).forEach(o=>rows.push([date,party,o,a.ore[o].n,r1(a.ore[o].t),
+      a.tot>0?Math.round(a.ore[o].t/a.tot*1000)/10:'',a.n,r1(a.tot)]));
+  });
+
+  const byShift=roll(l=>l.shift_date+'|'+l.shift_name+'|'+l.party);
+  rows.push([]);
+  rows.push(['BLEND BY ORE, BY SHIFT']);
+  rows.push(['date','shift','party','ore','loads','tonnes','share_of_shift_pct']);
+  Object.keys(byShift).sort().forEach(k=>{
+    const [date,name,party]=k.split('|'), a=byShift[k];
+    oreOrder(a.ore).forEach(o=>rows.push([date,name,party,o,a.ore[o].n,r1(a.ore[o].t),
+      a.tot>0?Math.round(a.ore[o].t/a.tot*1000)/10:'']));
+  });
+
+  /* the day, both shifts together, with the mill beside it */
+  const mday={}; milled.forEach(m=>{
+    mday[m.shift_date]=mday[m.shift_date]||{t:0,h:0};
+    if(m.tonnes!=null){mday[m.shift_date].t+=(+m.tonnes||0);mday[m.shift_date].h++}
+  });
+  const dday={}; delays.forEach(x=>{
+    if(!x.ended_at)return;
+    const k=x.shift_date+'|'+x.party;
+    dday[k]=(dday[k]||0)+(Date.parse(x.ended_at)-Date.parse(x.started_at));
+  });
+  rows.push([]);
+  rows.push(['DAY TOTALS']);
+  rows.push(['date','party','loads','tonnes','delay_s','mill_t_recorded','mill_hours_recorded']);
+  Object.keys(byDay).sort().forEach(k=>{
+    const [date,party]=k.split('|'), a=byDay[k], m=mday[date]||{t:0,h:0};
+    rows.push([date,party,a.n,r1(a.tot),Math.round((dday[k]||0)/1000),
+      party==='cos'?r1(m.t):'',party==='cos'?m.h:'']);
+  });
+
+  /* the shifts themselves, as they were set up */
+  rows.push([]);
+  rows.push(['SHIFTS']);
+  rows.push(['date','shift','label','started_at','ended_at','payload_t','fill','target_tph','shift_hours']);
+  shifts.forEach(x=>rows.push([x.shift_date,x.shift_name,x.label||'',x.started_at||'',x.ended_at||'',
+    x.payload==null?'':x.payload,x.fill==null?'':x.fill,
+    x.target_tph==null?'':x.target_tph,x.shift_hours==null?'':x.shift_hours]));
+
+  if(delays.length){
+    rows.push([]);
+    rows.push(['DELAYS']);
+    rows.push(['date','shift','party','from_iso','from','to','reason','length_s']);
+    delays.forEach(x=>{
+      const a=Date.parse(x.started_at), b=x.ended_at?Date.parse(x.ended_at):null;
+      rows.push([x.shift_date,x.shift_name,x.party,x.started_at,fmtTime(a),b?fmtTime(b):'still open',
+        x.reason||'',b?Math.round((b-a)/1000):'']);
+    });
+  }
+
+  if(milled.length){
+    rows.push([]);
+    rows.push(['MILL, BY HOUR']);
+    rows.push(['date','shift','hour_start_iso','hour','mill_tph']);
+    milled.forEach(m=>rows.push([m.shift_date,m.shift_name,iso(+m.hour_start),
+      hourLabel(+m.hour_start),m.tonnes==null?'':m.tonnes]));
+  }
+  return rows;
+}
+
+async function exportAllCsv(){
+  if(!synced()){alert('This one comes from the database, so it needs a connection.');return}
+  const shown=histFiltered();
+  const from=histFrom||(shown.length?shown[shown.length-1].date:ymd(new Date(now()-30*86400000)));
+  const to=histTo||(shown.length?shown[0].date:shiftKey().date);
+  const btn=$('#histAllCsv'), was=btn?btn.textContent:'';
+  if(btn){btn.textContent='Fetching…';btn.disabled=true}
+  try{
+    const r=await fetch(SB.url+'/rest/v1/rpc/range_detail',{method:'POST',headers:sbHeaders(),
+      body:JSON.stringify({p_site:SB.site,p_from:from,p_to:to})});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    if(!d||!(d.loads||[]).length){alert('Nothing logged between '+from+' and '+to+'.');return}
+    download('tipm8-all-'+from+'-to-'+to+'.csv',toCsv(fullCsvRows(d)),'text/csv');
+  }catch(e){alert('Could not fetch that range: '+(e.message||'no connection'))}
+  finally{if(btn){btn.textContent=was;btn.disabled=false}}
+}
+
 /* One row per shift across whatever the date filter is showing — for trending, rather
    than the load-by-load detail a single shift's export gives. */
 function exportRangeCsv(){
@@ -2156,6 +2289,7 @@ $('#histFrom').addEventListener('change',e=>{histFrom=e.target.value||'';renderH
 $('#histTo').addEventListener('change',e=>{histTo=e.target.value||'';renderHist();pullHistory(true)});
 $('#histClear').addEventListener('click',()=>{histFrom='';histTo='';$('#histFrom').value='';$('#histTo').value='';renderHist();pullHistory(true)});
 $('#histCsv').addEventListener('click',exportRangeCsv);
+$('#histAllCsv').addEventListener('click',exportAllCsv);
 $('#histBody').addEventListener('click',e=>{
   const c=e.target.closest('[data-csv]'); if(c){exportShiftCsv(c.dataset.csv);return}
   const v=e.target.closest('[data-view]'); if(v)viewShift(v.dataset.view);

@@ -150,7 +150,18 @@ one that never logged it.
   showing — hours, loads, tonnes, tph, delay, ROM and COS tonnes, gap and ore split. That
   is the one for trending a month; the per-shift export is the one for auditing a shift.
 
-Files land as `tipm8-2026-09-14-day.csv` and `tipm8-shifts-<from>-to-<to>.csv`, so they
+- **Export everything** gives the whole range in one file, which is the one the geology side
+  asks for. It comes from the database in a single call rather than a round trip per shift, so
+  a month is one request that either works or does not. Sections, in order: every load; **the
+  blend by ore for each day**; the same split by shift; day totals; the shifts as they were set
+  up; delays; and the mill hour by hour.
+
+  Ore figures are kept **per party**. The ROM pad and the COS are two counts of the same
+  material moving, so adding them together would double the day — each row says which party it
+  belongs to, and shares are against that party's own day.
+
+Files land as `tipm8-2026-09-14-day.csv`, `tipm8-shifts-<from>-to-<to>.csv` and
+`tipm8-all-<from>-to-<to>.csv`, so they
 sort by date on their own. `timestamp_iso` is the authoritative column; the `time` column
 beside it is local to whichever device did the export, for reading rather than for maths.
 
@@ -306,6 +317,7 @@ applied by hand whenever the database connection is not available to whoever wro
 
     sql/2026-09-17_milled_tonnes.sql           milled table, sync_milled, milled on the reads
     sql/2026-09-17_load_corrections.sql        corrections that stick; a live shift can't stay ended
+    sql/2026-09-22_range_detail.sql            a whole date range in one read, for Export everything
 
 Each one is safe to run twice. Paste it into the Supabase SQL editor and run it. Until
 `2026-09-17_milled_tonnes.sql` has been applied the page still works: the COS pad keeps
