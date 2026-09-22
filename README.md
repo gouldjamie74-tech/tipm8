@@ -68,6 +68,21 @@ that same hour, the difference, and the running difference — which is what the
 stockpile built or gave up. A closed hour with nothing recorded is marked *due*, and the
 by-hour chart carries the average as a dashed line.
 
+**Enter or correct mill readings** opens the same hours for *any* shift, and sits on both the
+COS page and the watcher's dashboard — the mill figure is a plant number, and the person
+holding it is as often in the control room as on the pad. A watcher is asked for the logging
+passcode once; after that the permission lasts as long as the page is open.
+
+The shift is picked from a list: this shift, the shift before it, or any shift the history
+holds. Readings already recorded are shown, whether they came from this pad, another one, or
+the shared log, with what was tipped in each hour beside them.
+
+**A shift total** covers the case where nobody read the meter hour by hour: type the tonnes for
+the whole shift and it is spread evenly across the hours, each one **marked estimated**, and
+any hour typed by hand is kept. Twelve identical hours are not twelve readings — the flag is
+carried to the database and shown against those hours, so a flat mill line can never be
+mistaken for a mill that actually ran flat.
+
 Hours run on the clock, as the plant reports them and the paper sheets record them: Day
 06:00 to 18:00, Night 18:00 to 06:00. That is half an hour ahead of the 06:30 changeover,
 deliberately — each of a shift's twelve hours has closed before that crew hands over, so the
@@ -318,6 +333,7 @@ applied by hand whenever the database connection is not available to whoever wro
     sql/2026-09-17_milled_tonnes.sql           milled table, sync_milled, milled on the reads
     sql/2026-09-17_load_corrections.sql        corrections that stick; a live shift can't stay ended
     sql/2026-09-22_range_detail.sql            a whole date range in one read, for Export everything
+    sql/2026-09-23_milled_estimated.sql        a reading spread from a shift total says so
 
 Each one is safe to run twice. Paste it into the Supabase SQL editor and run it. Until
 `2026-09-17_milled_tonnes.sql` has been applied the page still works: the COS pad keeps

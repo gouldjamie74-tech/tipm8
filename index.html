@@ -392,6 +392,9 @@ tr.edit:hover td{background:var(--surface)}
       <div class="gap" id="mStockBox"><div class="v" id="mStock">—</div><div class="l">COS stock, tipped less milled</div><div class="s" id="mStockNote"></div></div>
     </div>
     <div class="note" id="millNote"></div>
+    <div class="row" style="margin:-2px 0 10px">
+      <button class="btn" id="millEditBtn">Enter or correct mill readings</button>
+    </div>
     <div class="chart">
       <h3>By hour</h3>
       <div id="c-mill"></div>
@@ -509,6 +512,9 @@ tr.edit:hover td{background:var(--surface)}
       <div class="hd-stats" id="hdStats"></div>
       <div class="chart"><h3>Tonnes by hour</h3><div id="hdHours"></div></div>
       <div id="hdMill"></div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" id="millEditBtn2">Enter or correct mill readings</button>
+      </div>
       <div id="hdSplit"></div>
       <div id="hdDelays"></div>
     </div>
@@ -527,6 +533,26 @@ tr.edit:hover td{background:var(--surface)}
   <div class="note" id="syncHint"></div>
 
 </div>
+</div>
+
+<div class="modal" id="millModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="meTitle">
+    <h2 id="meTitle">Mill readings</h2>
+    <div class="f"><label for="meShift">Shift</label>
+      <select id="meShift"></select></div>
+    <div class="note" id="meNote" style="margin:-4px 0 10px"></div>
+    <div class="tbl" style="max-height:46vh;overflow:auto">
+      <table class="mill"><thead><tr><th>Hour</th><th class="r">Tipped t</th>
+        <th class="r">Mill t/h</th></tr></thead><tbody id="meBody"></tbody></table>
+    </div>
+    <div class="f" style="margin-top:12px"><label for="meTotal">Or a shift total, if the hours were missed</label>
+      <input id="meTotal" type="number" inputmode="decimal" step="1" min="0" placeholder="tonnes for the whole shift"></div>
+    <div class="note" id="meSpread"></div>
+    <div class="actions">
+      <button class="btn primary" id="meSave">Save</button>
+      <button class="btn" id="meCancel">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal" id="editModal" hidden>
@@ -1705,6 +1731,39 @@ const signed=v=>v==null?'—':Math.abs(v)<0.5?'0':(v>0?'+':'−')+fmtT(Math.abs(
 
 /* An edit is written to the pad first and queued, like a tip, so a dropped signal costs lag
    rather than numbers. Blank clears the hour. Only the hours actually touched are sent. */
+/* The mill reading is a plant figure, not a pad observation: the person with it is as often
+   in the control room watching as on the COS pad. So a watcher may enter one, behind the same
+   passcode that guards logging, and the permission lasts as long as the page is open. */
+let millUnlocked=false;
+const millWriter=()=>party()==='cos'||millUnlocked;
+function askMillPin(){
+  if(millWriter())return true;
+  const v=prompt('Passcode to enter mill readings:');
+  if(v==null)return false;
+  if(String(v).trim()!==LOG_PIN){alert('Wrong passcode. Nothing was changed.');return false}
+  millUnlocked=true;
+  return true;
+}
+
+/* A reading for any shift, not only the one running. The queue is already keyed by shift, and
+   sync_milled already addresses a shift by its date and name, so a figure for last Tuesday
+   travels the same road as one for this hour. */
+function setMilledFor(k,h,raw,estimated){
+  if(!millWriter())return false;
+  const txt=String(raw==null?'':raw).replace(/[,\s]/g,'');
+  let v=null;
+  if(txt!==''){v=parseFloat(txt);if(!isFinite(v)||v<0)return false;v=Math.round(v*10)/10}
+  const cur=ensureMill();
+  if(sameKey(k,cur.key)){ if(v==null)delete cur.t[h]; else cur.t[h]=v }
+  const box=S.millOut[mkey(k)]||(S.millOut[mkey(k)]={rows:{},est:{},
+    startedAt:(S.shift.startedAt&&sameKey(keyOf(S.shift),k))?S.shift.startedAt:shiftStart(millHours(k)[1])});
+  if(!box.est)box.est={};
+  box.rows[h]=v;
+  if(v==null)delete box.est[h]; else box.est[h]=!!estimated;
+  store.set(KEY,JSON.stringify(S));
+  scheduleMill(600);
+  return true;
+}
 function setMilled(h,raw){
   if(party()!=='cos')return false;
   const m=ensureMill(), k=m.key, txt=String(raw==null?'':raw).replace(/[,\s]/g,'');
@@ -1720,7 +1779,7 @@ function setMilled(h,raw){
 }
 function scheduleMill(ms){clearTimeout(millTimer);millTimer=setTimeout(drainMill,ms)}
 async function drainMill(){
-  if(millBusy||party()!=='cos'||!S.millOut)return;
+  if(millBusy||!millWriter()||!S.millOut)return;
   const keys=Object.keys(S.millOut);
   if(!keys.length)return;
   millBusy=true;
@@ -1730,7 +1789,8 @@ async function drainMill(){
       const r=await fetch(SB.url+'/rest/v1/rpc/sync_milled',{method:'POST',headers:sbHeaders(),
         body:JSON.stringify({p_site:SB.site,p_date:date,p_name:name,
           p_settings:{device:deviceName(),started_at:iso(box.startedAt)},
-          p_rows:Object.keys(box.rows).map(h=>({hour_start:iso(+h),tonnes:box.rows[h]}))})});
+          p_rows:Object.keys(box.rows).map(h=>({hour_start:iso(+h),tonnes:box.rows[h],
+            estimated:!!(box.est&&box.est[h])}))})});
       if(r.status===404){millServer=false;millErr=null;break}   /* the database has not been updated for this yet */
       if(!r.ok)throw new Error('HTTP '+r.status);
       millServer=true;millErr=null;
@@ -1742,6 +1802,122 @@ async function drainMill(){
   renderMill();
   if(Object.keys(S.millOut).length)scheduleMill(millServer===false?120000:millErr?15000:1500);
 }
+/* ---- mill readings, for any shift ---------------------------------------
+   Three things asked for at once, which turn out to be one screen: entering a reading from the
+   dashboard rather than only the COS page, giving a shift total when the hourly readings were
+   missed, and going back to a past day to correct what is there. */
+let meKey=null, meLoaded=null;
+
+function meShiftOptions(){
+  const out=[], seen={};
+  const add=(k,label)=>{const id=mkey(k); if(seen[id])return; seen[id]=1; out.push({k,label})};
+  add(shiftKey(),'This shift');
+  const p=prevKey(shiftKey());
+  add(p,'Previous shift');
+  (histUnified()||[]).forEach(x=>add({date:x.date,name:x.name},x.date+' · '+x.name));
+  return out.slice(0,60);
+}
+/* The shift before a given one: the night before a day, the day before a night. */
+function prevKey(k){
+  if(k.name==='Night')return{date:k.date,name:'Day'};
+  const d=new Date(dOf(k.date)); d.setDate(d.getDate()-1);
+  return{date:ymd(d),name:'Night'};
+}
+
+async function meLoad(k){
+  meLoaded={t:{},est:{},tipped:{}};
+  const cur=ensureMill();
+  if(sameKey(k,cur.key)){
+    Object.keys(cur.t).forEach(h=>meLoaded.t[h]=cur.t[h]);
+    millRows(k,S.loads,cur.t).forEach(r=>meLoaded.tipped[r.h]=r.tipped);
+  }
+  const q=(S.millOut||{})[mkey(k)];
+  if(q&&q.rows)Object.keys(q.rows).forEach(h=>{
+    if(q.rows[h]==null)delete meLoaded.t[h]; else meLoaded.t[h]=q.rows[h];
+    if(q.est)meLoaded.est[h]=!!q.est[h];
+  });
+  if(!synced())return;
+  try{
+    const r=await fetch(SB.url+'/rest/v1/rpc/shift_summaries',{method:'POST',headers:sbHeaders(),
+      body:JSON.stringify({p_site:SB.site,p_from:k.date,p_to:k.date,p_limit:4})});
+    const rows=r.ok?await r.json():[];
+    const row=(Array.isArray(rows)?rows:[]).find(x=>x.shift_name===k.name);
+    if(!row||!row.id)return;
+    const r2=await fetch(SB.url+'/rest/v1/rpc/shift_detail',{method:'POST',headers:sbHeaders(),
+      body:JSON.stringify({p_id:row.id})});
+    if(!r2.ok)return;
+    const d=await r2.json();
+    (d.milled||[]).forEach(m=>{
+      const h=Date.parse(m.hour_start);
+      if(!isFinite(h))return;
+      if(!(q&&q.rows&&h in q.rows)){meLoaded.t[h]=+m.tonnes; meLoaded.est[h]=!!m.estimated}
+    });
+    /* what the COS tipped in each hour, for something to read the mill figure against */
+    const cosLoads=(d.loads||[]).filter(l=>l.party!=='rom')
+      .map(l=>({t:Date.parse(l.logged_at),tonnes:+l.tonnes||0}));
+    millRows(k,cosLoads,{}).forEach(r=>meLoaded.tipped[r.h]=r.tipped);
+  }catch(e){}
+}
+
+function meRender(){
+  const k=meKey, hours=millHours(k), t=meLoaded?meLoaded.t:{}, est=meLoaded?meLoaded.est:{};
+  $('#meBody').innerHTML=hours.map(h=>{
+    const v=t[h], tip=(meLoaded&&meLoaded.tipped[h])||0;
+    return `<tr><td>${hourLabel(h)}</td><td class="r">${tip?fmtT(tip):'—'}</td>`
+      +`<td class="r"><input class="mecell" data-h="${h}" type="number" inputmode="decimal" `
+      +`step="1" min="0" value="${v==null?'':v}"`
+      +`${est[h]?' title="from a shift total"':''}> ${est[h]?'<span class="due">est</span>':''}</td></tr>`;
+  }).join('');
+  const got=hours.filter(h=>t[h]!=null);
+  $('#meNote').textContent=got.length
+    ? got.length+' of '+hours.length+' hours recorded'
+      +(got.some(h=>est[h])?', some spread from a shift total':'')
+    : 'No mill readings for this shift yet.';
+}
+
+function meSpreadPreview(){
+  const v=parseFloat($('#meTotal').value);
+  const n=millHours(meKey).length;
+  $('#meSpread').textContent=(isFinite(v)&&v>0)
+    ? 'Saving will put '+Math.round(v/n*10)/10+' t/h against each of the '+n+' hours, marked as '
+      +'estimated. Any reading typed above is kept.'
+    : '';
+}
+
+async function openMillEditor(k){
+  if(!askMillPin())return;
+  meKey=k||shiftKey();
+  const opts=meShiftOptions();
+  $('#meShift').innerHTML=opts.map(o=>
+    `<option value="${esc(mkey(o.k))}"${sameKey(o.k,meKey)?' selected':''}>${esc(o.label)}</option>`).join('');
+  $('#meTotal').value=''; $('#meSpread').textContent='';
+  $('#meBody').innerHTML='<tr><td colspan="3">Loading…</td></tr>';
+  $('#millModal').hidden=false;
+  await meLoad(meKey);
+  meRender();
+}
+function closeMill(){$('#millModal').hidden=true;meKey=null;meLoaded=null}
+
+function meSave(){
+  if(!meKey)return closeMill();
+  const hours=millHours(meKey);
+  const typed={};
+  document.querySelectorAll('#meBody .mecell').forEach(i=>{typed[+i.dataset.h]=i.value});
+  const total=parseFloat($('#meTotal').value);
+  const spread=(isFinite(total)&&total>0)?Math.round(total/hours.length*10)/10:null;
+  let n=0;
+  hours.forEach(h=>{
+    const was=meLoaded&&meLoaded.t[h]!=null?String(meLoaded.t[h]):'';
+    const now2=String(typed[h]==null?'':typed[h]).trim();
+    if(now2!==''){ if(now2!==was){setMilledFor(meKey,h,now2,false);n++} return }
+    if(spread!=null){setMilledFor(meKey,h,spread,true);n++;return}
+    if(was!==''){setMilledFor(meKey,h,'',false);n++}
+  });
+  closeMill();
+  renderMill();renderDash();
+  if(n&&!synced())alert('Saved on this device. It will reach the shared log when the connection is back.');
+}
+
 /* The log's copy of the live shift's milled hours. A pad keeps its own unsent edits over it
    and takes everything else, so a replacement pad picks up hours entered before it arrived. */
 function millFromLog(d){
@@ -2352,6 +2528,18 @@ $('#eDel').addEventListener('click',()=>{const i=editIx;closeEdit();del(i)});
 $('#eOre').addEventListener('click',e=>{const b=e.target.closest('[data-eore]');if(!b)return;editOre=b.dataset.eore;renderEditOre()});
 $('#editModal').addEventListener('click',e=>{if(e.target===$('#editModal'))closeEdit()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modalOpen())closeEdit()});
+$('#millEditBtn').addEventListener('click',()=>openMillEditor(shiftKey()));
+$('#millEditBtn2').addEventListener('click',()=>openMillEditor(shiftKey()));
+$('#meCancel').addEventListener('click',closeMill);
+$('#meSave').addEventListener('click',meSave);
+$('#meTotal').addEventListener('input',meSpreadPreview);
+$('#meShift').addEventListener('change',async e=>{
+  const [date,name]=e.target.value.split('|');
+  meKey={date,name};
+  $('#meBody').innerHTML='<tr><td colspan="3">Loading…</td></tr>';
+  await meLoad(meKey); meRender(); meSpreadPreview();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#millModal').hidden)closeMill()});
 $$('.step-c button').forEach(b=>b.addEventListener('click',()=>{
   const k=b.dataset.k, d=+b.dataset.d;
   S.fleet[k]=Math.max(0,Math.min(99,(S.fleet[k]||0)+d));
