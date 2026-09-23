@@ -1,15 +1,19 @@
 -- Mill hours backfilled from the met workbook, 12–21 September 2026.
 --
 -- TipM8 started logging on 12 September; the mill was only ever read by hand for part of it.
--- The met workbook (PROCESS LOGSHEETS, public.met_daily.mill_dry_t) has a dry tonnes figure for
--- every day, so the gaps are filled from it. This is a record of what was run once, not
--- something to run again.
+-- The met workbook (PROCESS LOGSHEETS, public.met_daily) has a figure for every day, so the gaps
+-- are filled from it. This is a record of what was run once, not something to run again.
+--
+-- WET tonnes (mill_wet_t). TipM8 reports wet throughout: the tipped tonnes it counts are wet as
+-- mined, so the mill figure it is compared against has to be wet too, or the COS stock figure
+-- carries a moisture difference of about 10% that nobody put there. The first pass of this
+-- backfill used mill_dry_t and was corrected in place the same day.
 --
 -- The rule: for each plant day (06:00 to 06:00, which is exactly TipM8's Day + Night mill
 -- hours), the hours an operator actually recorded are left alone, and the remainder of the
 -- day's tonnes is spread evenly across the hours that were empty:
 --
---     rate = (mill_dry_t - tonnes already recorded) / (24 - hours already recorded)
+--     rate = (mill_wet_t - tonnes already recorded) / (24 - hours already recorded)
 --
 -- so the day reconciles to the workbook exactly while no reading is touched. Every row written
 -- carries estimated = true and device = 'met-backfill'.
@@ -21,8 +25,5 @@
 -- 21 September Day shift, whose hours run 06:00 to 17:00. It was moved to the 20 September
 -- Night shift, where that hour belongs.
 --
--- Caveats worth keeping with the data:
---   * mill_dry_t is dry; the tipped tonnes TipM8 counts are wet as-mined, roughly 10% heavier.
---     The COS stock figure carries that difference.
---   * a spread hour is an average, not a measurement. The hour-by-hour comparison is only as
---     good as the hours an operator actually read.
+-- Caveat worth keeping with the data: a spread hour is an average, not a measurement. The
+-- hour-by-hour comparison is only as good as the hours an operator actually read.

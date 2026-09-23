@@ -88,8 +88,9 @@ logging for days on which nobody read the mill by hand. For each plant day the h
 recorded were left alone and the rest of that day's dry tonnes were spread across the hours that
 were empty, so each day reconciles to the workbook while no reading was touched. Those rows carry
 the estimated flag and `met-backfill` as their device, and both CSV exports name the **basis** of
-every mill figure — *reading* or *estimated*. Two things to keep in mind when reading them: the
-workbook figure is **dry** while tipped tonnes are wet as mined, about 10% heavier, and a spread
+every mill figure — *reading* or *estimated*. The figure used is **wet** tonnes, because TipM8
+reports wet throughout: the tipped tonnes it counts are wet as mined, so a dry mill figure beside
+them would put about 10% of moisture into the COS stock line. One thing to keep in mind: a spread
 hour is an average rather than a measurement.
 
 Hours run on the clock, as the plant reports them and the paper sheets record them: Day
