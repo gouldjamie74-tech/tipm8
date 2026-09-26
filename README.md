@@ -418,7 +418,10 @@ Bump `CACHE` in `sw.js` if you ever need to force every device to drop its cache
 
 ## Notes
 - Ore sources are listed in `ORES` near the top of the script — edit names or colours
-  there. Delay reasons are in `REASONS` just below.
+  there. Delay reasons are in `REASONS` just below. Names are the key, not a label: the ore
+  colour standard, every export and the blend figures all match on the name as spelled, so a
+  source added here has to be spelled the way the site spells it. The current list is Kopra,
+  Toka, Marawuwung, Araren, Alaskar and Scats; number keys 1 to 6 pick them in that order.
 - Charts are hand-rolled SVG; there is no charting library to update. Hover over any chart —
   or tap it on the pad — for the values at that point: each chart lays invisible full-height
   columns over its plot (one per block, load, hour or shift) built with `tipCols`, or
