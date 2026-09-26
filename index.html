@@ -244,6 +244,8 @@ tr.edit:hover td{background:var(--surface)}
     <div class="h" id="dAvgBox"><div class="v" id="dAvg">—</div><div class="l">tph, shift average</div></div>
     <div class="h"><div class="v" id="dTonnes">0</div><div class="l">tonnes to COS</div></div>
     <div class="h"><div class="v" id="dTarget">—</div><div class="l">target tph</div></div>
+    <div class="h"><div class="v" id="dMilled">—</div><div class="l" id="dMilledLabel">mill t/h, average</div></div>
+    <div class="h"><div class="v" id="dMillTotal">—</div><div class="l">t milled</div></div>
   </div>
 
   <div class="prog" id="dProg"></div>
@@ -259,8 +261,6 @@ tr.edit:hover td{background:var(--surface)}
     <div class="stat" id="dTipsBox"><div class="v" id="dTips">—</div><div class="l" id="dTipsLabel">tips/h now</div></div>
     <div class="stat"><div class="v" id="dTipsNeed">—</div><div class="l" id="dTipsNeedLabel">tips/h needed</div></div>
     <div class="stat"><div class="v" id="dSince">—</div><div class="l">since last tip</div></div>
-    <div class="stat"><div class="v" id="dMilled">—</div><div class="l">mill t/h, average</div></div>
-    <div class="stat"><div class="v" id="dMillTotal">—</div><div class="l">t milled, total</div></div>
     <div class="stat"><div class="v" id="dMillRate">—</div><div class="l">tipped t/h, same hours</div></div>
     <div class="stat"><div class="v" id="dStock">—</div><div class="l">COS stock, tipped less milled</div></div>
   </div>
@@ -1631,6 +1631,7 @@ function renderDash(){
   markRate($('#dTipsBox'),st);
   const mm=ensureMill(), msum=millSum(millRows(mm.key,S.loads,mm.t));
   $('#dMilled').textContent=msum.rate!=null?n0(msum.rate):'—';
+  $('#dMilledLabel').textContent=msum.hours?'mill t/h, average of '+msum.hours+' h':'mill t/h, average';
   $('#dMillTotal').textContent=msum.hours?fmtT(msum.milled):'—';
   $('#dMillRate').textContent=msum.tippedRate!=null?n0(msum.tippedRate):'—';
   $('#dStock').textContent=signed(msum.stock);

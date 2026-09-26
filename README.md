@@ -85,7 +85,7 @@ mistaken for a mill that actually ran flat.
 
 **The mill hours for 12–21 September were backfilled** from the met workbook, because TipM8 was
 logging for days on which nobody read the mill by hand. For each plant day the hours an operator
-recorded were left alone and the rest of that day's dry tonnes were spread across the hours that
+recorded were left alone and the rest of that day's tonnes were spread across the hours that
 were empty, so each day reconciles to the workbook while no reading was touched. Those rows carry
 the estimated flag and `met-backfill` as their device, and both CSV exports name the **basis** of
 every mill figure — *reading* or *estimated*. The figure used is **wet** tonnes, because TipM8
@@ -110,8 +110,12 @@ signal costs lag rather than numbers. They send through their own call, `sync_mi
 problem there can never hold up logging. Only the hours actually touched are sent, which
 means a pad with nothing to say cannot wipe hours another pad entered.
 
-The watcher's dashboard carries mill t/h average, milled total, tipped t/h over the same
-hours and COS stock in the live row, the previous shift's mill average and total, and the
+The watcher's dashboard carries **mill t/h average and tonnes milled in the headline cluster**,
+beside tph now, shift average, tonnes to COS and target — the mill is read against the tipping,
+so it belongs at the same size rather than in the small print. The average names how many hours
+it covers, since it is an average of the hours recorded and not of the shift. Tipped t/h over
+the same hours and COS stock stay in the row below, being comparisons rather than headline
+figures, the previous shift's mill average and total, and the
 same by-hour and running-total charts. Previous shifts gains *Mill t/h*, *Milled t* and
 *COS stock* columns — an average covering fewer than twelve hours says how many — three new
 trends, *Mill t/h*, *Milled t* and *Tipped vs mill t/h*, and a mill section in each shift's
