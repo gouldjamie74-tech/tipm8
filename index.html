@@ -222,6 +222,7 @@ tr.edit:hover td{background:var(--surface)}
   <div class="hd-sync">
     <div class="chips" id="syncChips" role="group" aria-label="Live sync"></div>
     <div class="sync"><i class="dot" id="syncDot"></i><span id="syncNote">Connecting…</span></div>
+    <div class="sync" id="tzNote" hidden><i class="dot warn"></i><span id="tzText"></span></div>
   </div>
 </header>
 
@@ -591,29 +592,57 @@ const PARTIES={
 };
 const SHIFT_START_MIN=6*60+30;   /* Day 06:30-18:29, Night 18:30-06:29 */
 const SHIFT_SPAN_MIN=720;
+
+/* ---- Site time ---------------------------------------------------------------------------
+   This log has one entry point: the pad, on the ROM pad, at Toka Tindung. So the app never asks
+   the device what time it is where it happens to be. Every shift boundary, mill hour and clock
+   face below is site time, and a device opened from anywhere else reads and writes the same
+   shift the pad does.
+
+   It used to read the device clock. On 5 October 2026 a device three hours ahead was opened at
+   06:30 its time - 03:30 at site, the middle of Night shift - rolled over, and synced a Day
+   shift that did not exist yet; because active_shift takes the most recently started shift,
+   that empty shift then outranked the running one on every watching page. Working in site time
+   removes the question rather than warning about it.
+
+   WITA is UTC+8 and has never observed daylight saving, so the offset is a constant.
+   Arithmetic uses it; display formats the shifted instant as UTC, which is the same wall clock
+   and keeps the reader's own month names. */
+const pad=n=>String(n).padStart(2,'0');
+const SITE_OFFSET_MIN=8*60, SITE_LABEL='WITA';
+/* A Date whose UTC fields read as site wall clock: sd(t).getUTCHours() is the hour at site. */
+const sd=t=>new Date((t==null?Date.now():t)+SITE_OFFSET_MIN*60000);
+/* The reverse: the instant at which site wall clock reads this. Date.UTC normalises, so a day
+   of 0 or 32 rolls into the neighbouring month correctly. */
+const sEpoch=(y,mo,d,h,mi,sec)=>Date.UTC(y,mo,d,h||0,mi||0,sec||0)-SITE_OFFSET_MIN*60000;
+const sMins=t=>{const d=sd(t);return d.getUTCHours()*60+d.getUTCMinutes()};
+const ymd=t=>{const d=sd(t);return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate())};
+const dOf=str=>{const [y,m,d]=String(str).split('-').map(Number);return sEpoch(y,m-1,d,0,0,0)};
+/* How far this device's own clock sits from site, for the note in the header. */
+const deviceOffsetMin=()=>-new Date().getTimezoneOffset()-SITE_OFFSET_MIN;
 /* Both parties derive the same shift key from their own clock, so neither has to
    start a shift for the other and a device that loses its state rejoins the same one. */
 function shiftKey(t){
-  const d=new Date(t==null?now():t), m=d.getHours()*60+d.getMinutes();
-  if(m>=SHIFT_START_MIN&&m<SHIFT_START_MIN+SHIFT_SPAN_MIN)return{date:ymd(d),name:'Day'};
-  if(m>=SHIFT_START_MIN+SHIFT_SPAN_MIN)return{date:ymd(d),name:'Night'};
-  const y=new Date(d);y.setDate(y.getDate()-1);return{date:ymd(y),name:'Night'};
+  const at=t==null?now():t, m=sMins(at);
+  if(m>=SHIFT_START_MIN&&m<SHIFT_START_MIN+SHIFT_SPAN_MIN)return{date:ymd(at),name:'Day'};
+  if(m>=SHIFT_START_MIN+SHIFT_SPAN_MIN)return{date:ymd(at),name:'Night'};
+  /* before 06:30 at site it is still last night's shift, and with no DST 24 h is exact */
+  return{date:ymd(at-86400000),name:'Night'};
 }
 /* The instant the shift holding t began. A shift is stamped with its changeover time
    rather than with whenever the first truck happened to tip, so elapsed, time left and
    the pace projection measure the shift itself and not the gap before it got busy. */
 function shiftStart(t){
-  const d=new Date(t==null?now():t), m=d.getHours()*60+d.getMinutes();
-  const at=(mins,back)=>{const s=new Date(d);if(back)s.setDate(s.getDate()-1);
-    s.setHours(Math.floor(mins/60),mins%60,0,0);return s.getTime()};
+  const inst=t==null?now():t, m=sMins(inst), d=sd(inst);
+  const Y=d.getUTCFullYear(), M=d.getUTCMonth(), D=d.getUTCDate();
+  const at=(mins,back)=>sEpoch(Y,M,D-(back?1:0),Math.floor(mins/60),mins%60,0);
   if(m>=SHIFT_START_MIN+SHIFT_SPAN_MIN)return at(SHIFT_START_MIN+SHIFT_SPAN_MIN,false);
   if(m>=SHIFT_START_MIN)return at(SHIFT_START_MIN,false);
   return at(SHIFT_START_MIN+SHIFT_SPAN_MIN,true);
 }
 const keyOf=s=>s&&s.key?s.key:(s&&s.startedAt?shiftKey(s.startedAt):null);
 const sameKey=(a,b)=>!!a&&!!b&&a.date===b.date&&a.name===b.name;
-const keyLabel=k=>k?k.name+' '+fmtDate(new Date(k.date+'T00:00:00').getTime()):'';
-const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const keyLabel=k=>k?k.name+' '+fmtDate(dOf(k.date)):'';
 const uid=()=>(self.crypto&&crypto.randomUUID)?crypto.randomUUID()
   :'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
      const r=Math.random()*16|0;return (c==='x'?r:(r&3|8)).toString(16)});
@@ -758,7 +787,7 @@ async function pull(){
    06:30 — which is always the day before the shift running now. Fetched on its own rather
    than read out of the history table, so a date filter set down there cannot hide it. */
 let dayRows=null, dayFor=null, dayAt=null, dayBusy=false;
-const prevDay=()=>{const d=new Date(dOf(shiftKey().date));d.setDate(d.getDate()-1);return ymd(d)};
+const prevDay=()=>ymd(dOf(shiftKey().date)-86400000);
 async function pullDay(){
   if(!synced()||dayBusy)return;
   const want=prevDay();
@@ -838,14 +867,13 @@ function setRole(r){
 
 /* Helpers */
 const now=()=>Date.now();
-const pad=n=>String(n).padStart(2,'0');
 const tPerLoad=()=>Math.round(S.fleet.payload*S.fleet.fill*100)/100;
 const endT=()=>S.shift.endedAt||now();
 const fmtClock=ms=>{ms=Math.max(0,ms||0);const s=Math.floor(ms/1000);return pad(Math.floor(s/3600))+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60)};
 const fmtDur=ms=>{if(ms==null||!isFinite(ms))return'—';const s=Math.round(ms/1000);if(s<60)return s+'s';const m=Math.floor(s/60);if(m<60)return m+'m '+pad(s%60)+'s';return Math.floor(m/60)+'h '+pad(m%60)+'m'};
-const fmtTime=t=>{const d=new Date(t);return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())};
-const fmtHM=t=>{const d=new Date(t);return pad(d.getHours())+':'+pad(d.getMinutes())};
-const fmtDate=t=>new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short'});
+const fmtTime=t=>{const d=sd(t);return pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())+':'+pad(d.getUTCSeconds())};
+const fmtHM=t=>{const d=sd(t);return pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())};
+const fmtDate=t=>sd(t).toLocaleDateString(undefined,{day:'numeric',month:'short',timeZone:'UTC'});
 const fmtT=v=>Math.round(v||0).toLocaleString();
 const n0=v=>(v==null||!isFinite(v))?'—':Math.round(v).toLocaleString();
 const n1=v=>(v==null||!isFinite(v))?'—':(Math.round(v*10)/10).toLocaleString();
@@ -1113,8 +1141,6 @@ function renderInt(){
   el.innerHTML=s+'</svg>';
 }
 
-const dOf=d=>new Date(d+'T00:00:00').getTime();
-
 /* One shape for the table and the chart, whether the rows came from the database —
    shared, and the only history a watching device has — or from this device's own log
    when it is offline or set to Off. Newest first either way. */
@@ -1227,7 +1253,7 @@ function renderShiftDetail(){
     const hh=Math.min(v,max)/max*IH, X=PL+i*bw+gap/2;
     const low=tgt>0&&v<tgt;
     g+=`<rect x="${X}" y="${PT+IH-hh}" width="${Math.max(1,bw-gap)}" height="${hh}" rx="2" fill="${low?'var(--amber)':'var(--blue)'}" opacity=".85"/>`;
-    if(nH<=14||i%2===0)g+=`<text x="${X+(bw-gap)/2}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${pad(new Date(a+i*3600000).getHours())}</text>`;
+    if(nH<=14||i%2===0)g+=`<text x="${X+(bw-gap)/2}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${pad(sd(a+i*3600000).getUTCHours())}</text>`;
   });
   g+=tipCols(buckets.map((v,i)=>({x0:PL+i*bw,x1:PL+(i+1)*bw,lines:[
     fmtHM(a+i*3600000)+'–'+fmtHM(a+(i+1)*3600000),
@@ -1544,7 +1570,20 @@ function renderDash(){
   need.style.color=gap==null?'':gap>=0?'var(--green)':'var(--amber)';
 }
 
+/* Shown only when this device's clock is not on site time, which onsite is never. It is not a
+   warning that anything is wrong — the shift is right either way now — it is there so someone
+   reading 14:20 from another country knows whose 14:20 it is. */
+function renderTz(){
+  const off=deviceOffsetMin(), box=$('#tzNote');
+  if(!off){box.hidden=true;return}
+  box.hidden=false;
+  const h=Math.abs(off)/60, hs=(Math.round(h*10)/10)+' h';
+  $('#tzText').textContent='This device is '+hs+(off>0?' ahead of':' behind')+' site. '
+    +'Shifts and times are site time ('+SITE_LABEL+'), now '+fmtHM(now())+'.';
+}
+
 function renderSync(){
+  renderTz();
   const chips=[['rom','ROM pad'],['cos','COS'],['viewer','Watching']];
   $('#syncChips').innerHTML=chips.map(([k,t])=>
     `<button type="button" data-role="${k}" aria-pressed="${role===k}">${t}</button>`).join('');
@@ -1586,10 +1625,10 @@ function renderSync(){
 const MILL_H=12, HOUR=3600000;
 let millServer=null, millErr=null, millBusy=false, millTimer=null;
 const mkey=k=>k.date+'|'+k.name;
-const hourLabel=h=>pad(new Date(h).getHours())+':00–'+pad(new Date(h+HOUR).getHours())+':00';
+const hourLabel=h=>pad(sd(h).getUTCHours())+':00–'+pad(sd(h+HOUR).getUTCHours())+':00';
 function millHours(k){
   const [y,m,d]=k.date.split('-').map(Number);
-  const base=new Date(y,m-1,d,k.name==='Night'?18:6,0,0,0).getTime();
+  const base=sEpoch(y,m-1,d,k.name==='Night'?18:6,0,0);
   return Array.from({length:MILL_H},(_,i)=>base+i*HOUR);
 }
 const millKey=()=>keyOf(S.shift)||shiftKey();
@@ -1713,8 +1752,7 @@ function meShiftOptions(){
 /* The shift before a given one: the night before a day, the day before a night. */
 function prevKey(k){
   if(k.name==='Night')return{date:k.date,name:'Day'};
-  const d=new Date(dOf(k.date)); d.setDate(d.getDate()-1);
-  return{date:ymd(d),name:'Night'};
+  return{date:ymd(dOf(k.date)-86400000),name:'Night'};
 }
 
 async function meLoad(k){
@@ -1853,7 +1891,7 @@ function millBarsSvg(rows){
     g+=`<rect x="${X.toFixed(1)}" y="${(PT+IH-th).toFixed(1)}" width="${w.toFixed(1)}" height="${th.toFixed(1)}" rx="1.5" fill="var(--blue)" opacity=".85"/>`;
     if(r.milled!=null){const mh=Math.min(r.milled,max)/max*IH;
       g+=`<rect x="${(X+w).toFixed(1)}" y="${(PT+IH-mh).toFixed(1)}" width="${w.toFixed(1)}" height="${mh.toFixed(1)}" rx="1.5" fill="var(--green)" opacity=".85"/>`}
-    g+=`<text x="${(X+w).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${pad(new Date(r.h).getHours())}</text>`;
+    g+=`<text x="${(X+w).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${pad(sd(r.h).getUTCHours())}</text>`;
   });
   const avg=millSum(rows).rate;
   if(avg!=null){const y=yOf(avg,max).toFixed(1);
@@ -1872,13 +1910,13 @@ function millCumSvg(rows){
   const {max,step}=niceMax(Math.max(ct,cm,1));
   const xOf=i=>PL+i/rows.length*IW, x0=xOf(pts[0].i-1);
   let g=svgOpen()+yGrid(max,step,v=>v>=1000?(v/1000)+'k':v);
-  rows.forEach((r,i)=>{if(i%2===0)g+=`<text x="${xOf(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${pad(new Date(r.h).getHours())}</text>`});
+  rows.forEach((r,i)=>{if(i%2===0)g+=`<text x="${xOf(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${pad(sd(r.h).getUTCHours())}</text>`});
   const line=(key,col)=>`<path d="M${x0.toFixed(1)} ${yOf(0,max).toFixed(1)} `
       +pts.map(p=>'L'+xOf(p.i).toFixed(1)+' '+yOf(p[key],max).toFixed(1)).join(' ')
       +`" fill="none" stroke="${col}" stroke-width="2"/>`
       +pts.map(p=>`<circle cx="${xOf(p.i).toFixed(1)}" cy="${yOf(p[key],max).toFixed(1)}" r="2.5" fill="${col}"/>`).join('');
   return g+line('ct','var(--blue)')+line('cm','var(--green)')
-    +tipNearest(pts.map(p=>({x:xOf(p.i),lines:['to '+pad(new Date(rows[p.i-1].h+HOUR).getHours())+':00',
+    +tipNearest(pts.map(p=>({x:xOf(p.i),lines:['to '+pad(sd(rows[p.i-1].h+HOUR).getUTCHours())+':00',
       'tipped '+fmtT(p.ct)+' t','milled '+fmtT(p.cm)+' t','COS stock '+signed(p.ct-p.cm)]})))+'</svg>';
 }
 
@@ -1902,7 +1940,7 @@ function renderMillQuick(){
     $('#mqNote').textContent=fmtT(target.tipped)+' t tipped to the COS in that hour'
       +(due.length>1?' · oldest first':'');
   }else{
-    $('#mqWhen').textContent='Mill t/h'+(run?' · next at '+pad(new Date(run.h+HOUR).getHours())+':00':'');
+    $('#mqWhen').textContent='Mill t/h'+(run?' · next at '+pad(sd(run.h+HOUR).getUTCHours())+':00':'');
     inp.disabled=true;delete inp.dataset.h;inp.placeholder='—';
     $('#mqNote').textContent=run?'Every closed hour is recorded. '+hourLabel(run.h)+' is still running.'
       :'Every hour of the shift is recorded.';
@@ -2025,8 +2063,8 @@ const modalOpen=()=>!$('#editModal').hidden;
 function openEdit(i){
   const l=S.loads[i];if(!l||S.shift.endedAt||viewing())return;
   editIx=i;editOre=l.ore||ORES[0].k;
-  const d=new Date(l.t);
-  $('#eTime').value=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+  const d=sd(l.t);
+  $('#eTime').value=pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())+':'+pad(d.getUTCSeconds());
   $('#eTonnes').value=l.tonnes;
   $('#editTitle').textContent='Edit load '+(i+1);
   renderEditOre();
@@ -2041,8 +2079,8 @@ function saveEdit(){
   const l=S.loads[editIx];if(!l)return closeEdit();
   const parts=($('#eTime').value||'').split(':').map(Number);
   if(parts.length>=2&&parts.every(v=>isFinite(v))){
-    const d=new Date(l.t);d.setHours(parts[0],parts[1],parts[2]||0,0);
-    l.t=d.getTime();
+    const d=sd(l.t);
+    l.t=sEpoch(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),parts[0],parts[1],parts[2]||0);
   }
   const tn=parseFloat($('#eTonnes').value);
   if(isFinite(tn)&&tn>=0)l.tonnes=Math.round(tn*100)/100;
@@ -2210,7 +2248,7 @@ function fullCsvRows(d){
 async function exportAllCsv(){
   if(!synced()){alert('This one comes from the database, so it needs a connection.');return}
   const shown=histFiltered();
-  const from=histFrom||(shown.length?shown[shown.length-1].date:ymd(new Date(now()-30*86400000)));
+  const from=histFrom||(shown.length?shown[shown.length-1].date:ymd(now()-30*86400000));
   const to=histTo||(shown.length?shown[0].date:shiftKey().date);
   const btn=$('#histAllCsv'), was=btn?btn.textContent:'';
   if(btn){btn.textContent='Fetching…';btn.disabled=true}

@@ -387,17 +387,32 @@ holds that shift as its current shift re-sends it on the next sync and `sync_par
 recreates it, new row id and all. Move the device off the shift first — a changeover does
 this on its own now — and delete afterwards.
 
-**A pad in another timezone starts the wrong shift.** Which shift it is comes from the
-device's own clock: past 06:30 is Day, past 18:30 is Night. That is right for a pad on the
-pad and wrong for anyone who opens a logging role from somewhere else. On 5 October 2026 a
-device three hours ahead was opened at 06:30 its time — 03:30 at site, the middle of Night
-shift — rolled over, and synced a `2026-10-05 Day` shift with no loads in it. Site data was
-untouched, but `active_shift` picks the most recently started shift, so the watching page
-showed the empty Day shift instead of the Night shift that was running, and the two-devices
-banner came up.
+**The app runs on site time, not device time.** It did not always. Which shift it was came
+from the device's own clock, which is right for a pad on the pad and wrong for anyone opening
+it from somewhere else. On 5 October 2026 a device three hours ahead was opened at 06:30 its
+time — 03:30 at site, the middle of Night shift — rolled over, and synced a `2026-10-05 Day`
+shift with no loads in it. Site data was untouched, but `active_shift` picks the most recently
+started shift, so the watching page showed the empty Day shift instead of the Night shift that
+was running, and the two-devices banner came up.
 
-Anyone looking from off site sets their device to **Watching**, which reads and never
-writes. A logging role carries the clock with it.
+Fixed at the root. The log has one entry point — the pad, on the ROM pad — so there is no
+reason for the app to care where the device is. Every shift boundary, mill hour, timestamp and
+clock face is **Asia/Makassar**, worked out from a fixed `SITE_OFFSET_MIN` of UTC+8 (WITA has
+never observed daylight saving, so no zone database is needed). Open it from Australia, from
+Perth, from anywhere: same shift, same hours, same times on screen as the pad sees.
+
+A device whose own clock is not on site time says so in the header — *this device is 3 h ahead
+of site; shifts and times are site time (WITA), now 14:20* — so a figure read from another
+country is not mistaken for local. Onsite that note never appears.
+
+The helpers are `sd(t)` (a Date whose **UTC** fields read as site wall clock), `sEpoch(...)`
+(the reverse), `sMins`, `ymd` and `dOf`, all together near the top of the script. Anything
+new that touches a date or an hour goes through them — a bare `getHours()` or
+`new Date(str + 'T00:00:00')` anywhere in this file is a bug, since both read the device.
+
+What this does **not** fix is a device whose clock is simply wrong rather than in another
+zone. Site time is derived from the epoch instant, so a pad set ten minutes fast is still
+ten minutes fast. Nothing short of taking time from the server would catch that.
 
 ### Access
 Watching is open; logging is not. Choosing **ROM pad** or **COS** asks for a four-digit
@@ -405,7 +420,7 @@ passcode, so the link can be handed to anyone who needs to watch a shift without
 being able to write trucks into it. Off and Watching never ask. A wrong code changes
 nothing — the device stays on whatever role it already had.
 
-The passcode is `LOG_PIN` near the top of the script, next to `ORES` and `REASONS`, and
+The passcode is `LOG_PIN` near the top of the script, next to `ORES`, and
 ships as `1234`. Change it there and redeploy; every device picks it up on next load.
 
 **Be clear about what that does and does not stop.** It stops a wrong tap and a borrowed
