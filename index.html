@@ -111,14 +111,11 @@ td.r,th.r{text-align:right}
 .chips button{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:0 14px;min-height:44px;font-size:14px;color:var(--muted)}
 .chips button:hover{color:var(--text);border-color:var(--muted)}
 .chips button:disabled{opacity:.35;cursor:not-allowed}
-.delay-live{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#2B1E07;border:1px solid #4C3A12;border-radius:10px;padding:12px 14px;margin-top:10px}
-.delay-live .t{font-family:var(--serif);font-size:30px;font-weight:500;font-variation-settings:"opsz" 144;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--amber);line-height:1}
-.delay-live .r{font-size:13px;color:var(--muted);margin-top:3px}
 .prog{display:flex;height:8px;border-radius:4px;background:var(--surface);overflow:hidden;margin:16px 0 8px}
 .prog i{display:block;height:100%;background:var(--blue)}
 .prog i.tgt{background:var(--line)}
 .modal{position:fixed;inset:0;z-index:20;background:rgba(5,9,13,.74);display:flex;align-items:center;justify-content:center;padding:16px}
-.chips[hidden],.delay-live[hidden],.modal[hidden]{display:none}
+.chips[hidden],.modal[hidden]{display:none}
 .chips button[aria-pressed="true"]{color:var(--text);border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
 .sync{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
@@ -255,9 +252,6 @@ tr.edit:hover td{background:var(--surface)}
     <div class="stat"><div class="v" id="dLoads">0</div><div class="l">loads</div></div>
     <div class="stat"><div class="v" id="dElapsed">—</div><div class="l">elapsed</div></div>
     <div class="stat"><div class="v" id="dLeft">—</div><div class="l">left in shift</div></div>
-    <div class="stat"><div class="v" id="dOp">—</div><div class="l">tph, delays excluded</div></div>
-    <div class="stat"><div class="v" id="dUtil">—</div><div class="l">utilisation</div></div>
-    <div class="stat"><div class="v" id="dDelay">—</div><div class="l">delay this shift</div></div>
     <div class="stat" id="dTipsBox"><div class="v" id="dTips">—</div><div class="l" id="dTipsLabel">tips/h now</div></div>
     <div class="stat"><div class="v" id="dTipsNeed">—</div><div class="l" id="dTipsNeedLabel">tips/h needed</div></div>
     <div class="stat"><div class="v" id="dSince">—</div><div class="l">since last tip</div></div>
@@ -271,7 +265,6 @@ tr.edit:hover td{background:var(--surface)}
       <div class="stat"><div class="v" id="pTonnes">—</div><div class="l">tonnes</div></div>
       <div class="stat"><div class="v" id="pLoads">—</div><div class="l">loads</div></div>
       <div class="stat"><div class="v" id="pTph">—</div><div class="l">tph average</div></div>
-      <div class="stat"><div class="v" id="pDelay">—</div><div class="l">delay</div></div>
       <div class="stat"><div class="v" id="pMilled">—</div><div class="l">mill t/h</div></div>
       <div class="stat"><div class="v" id="pMillTotal">—</div><div class="l">t milled</div></div>
       <div class="stat" id="pDeltaBox"><div class="v" id="pDelta">—</div><div class="l">projected vs last</div></div>
@@ -284,7 +277,6 @@ tr.edit:hover td{background:var(--surface)}
       <div class="stat"><div class="v" id="yTonnes">—</div><div class="l">tonnes</div></div>
       <div class="stat"><div class="v" id="yLoads">—</div><div class="l">loads</div></div>
       <div class="stat"><div class="v" id="yTph">—</div><div class="l">t/h over 24 h</div></div>
-      <div class="stat"><div class="v" id="yDelay">—</div><div class="l">delay</div></div>
       <div class="stat"><div class="v" id="yMill">—</div><div class="l">mill t/h</div></div>
       <div class="stat"><div class="v" id="yMillTotal">—</div><div class="l">t milled</div></div>
       <div class="stat"><div class="v" id="yStock">—</div><div class="l">COS stock</div></div>
@@ -325,15 +317,6 @@ tr.edit:hover td{background:var(--surface)}
       <div class="note" id="mqNote"></div>
     </div>
 
-    <div class="chips writer" id="delayChips"></div>
-    <div class="note writer" id="delayNote">Tap a reason to open a delay. Logging a tip closes it.</div>
-    <div class="delay-live writer" id="delayLive" hidden>
-      <div>
-        <div class="t" id="delayClock">00:00:00</div>
-        <div class="r" id="delayReason"></div>
-      </div>
-      <button class="btn" id="delayEnd">End delay</button>
-    </div>
   </section>
 
   <section>
@@ -343,9 +326,6 @@ tr.edit:hover td{background:var(--surface)}
       <div class="stat"><div class="v" id="tph30">—</div><div class="l">tph, last 30 min</div></div>
       <div class="stat" id="tipsRollStat"><div class="v" id="tipsRoll">—</div><div class="l" id="tipsRollLabel">tips/h, last 30 min</div></div>
       <div class="stat"><div class="v" id="tipsNeed">—</div><div class="l" id="tipsNeedLabel">tips/h needed</div></div>
-      <div class="stat"><div class="v" id="tphOp">—</div><div class="l">tph, delays excluded</div></div>
-      <div class="stat"><div class="v" id="util">—</div><div class="l">utilisation</div></div>
-      <div class="stat"><div class="v" id="delayTot">—</div><div class="l">delay this shift</div></div>
       <div class="stat"><div class="v" id="loads">0</div><div class="l">loads</div></div>
       <div class="stat"><div class="v" id="avgInt">—</div><div class="l">average between loads</div></div>
       <div class="stat"><div class="v" id="targetInt">—</div><div class="l">target between loads</div></div>
@@ -444,7 +424,7 @@ tr.edit:hover td{background:var(--surface)}
     <div class="chart">
       <h3>Cumulative tonnes</h3>
       <div id="c-cum"></div>
-      <div class="legend"><span><i style="background:var(--blue)"></i>tonnes to COS</span><span><i class="tgt"></i>target pace</span><span><i class="bar" style="background:var(--amber);opacity:.35"></i>delay</span></div>
+      <div class="legend"><span><i style="background:var(--blue)"></i>tonnes to COS</span><span><i class="tgt"></i>target pace</span></div>
     </div>
     <div class="chart">
       <h3>Minutes between loads</h3>
@@ -471,16 +451,6 @@ tr.edit:hover td{background:var(--surface)}
   </section>
 
   <section>
-    <h2>Delay log</h2>
-    <div class="tbl">
-    <table>
-      <thead><tr><th>#</th><th>Reason</th><th>From</th><th>To</th><th class="r">Length</th><th class="r">t forgone</th><th></th></tr></thead>
-      <tbody id="delayBody"></tbody>
-    </table>
-    </div>
-  </section>
-
-  <section>
     <h2>Previous shifts</h2>
     <div class="histbar">
       <label for="histFrom">From</label><input type="date" id="histFrom" class="text">
@@ -490,7 +460,6 @@ tr.edit:hover td{background:var(--surface)}
         <option value="tonnes">Tonnes</option>
         <option value="tph">tph</option>
         <option value="loads">Loads</option>
-        <option value="delay">Delay</option>
         <option value="milled">Mill t/h</option>
         <option value="milledt">Milled t</option>
         <option value="vsmill">Tipped vs mill t/h</option>
@@ -516,11 +485,10 @@ tr.edit:hover td{background:var(--surface)}
         <button class="btn" id="millEditBtn2">Enter or correct mill readings</button>
       </div>
       <div id="hdSplit"></div>
-      <div id="hdDelays"></div>
     </div>
     <div class="tbl">
     <table>
-      <thead><tr><th>Shift</th><th>Date</th><th class="r">Hours</th><th class="r">Loads</th><th class="r">Tonnes</th><th class="r">tph</th><th class="r">Mill t/h</th><th class="r">Milled t</th><th class="r">COS stock</th><th class="r">Delay</th><th class="r">ROM</th><th class="r">COS</th><th class="r">Gap t</th><th>Ore split</th><th></th></tr></thead>
+      <thead><tr><th>Shift</th><th>Date</th><th class="r">Hours</th><th class="r">Loads</th><th class="r">Tonnes</th><th class="r">tph</th><th class="r">Mill t/h</th><th class="r">Milled t</th><th class="r">COS stock</th><th class="r">ROM</th><th class="r">COS</th><th class="r">Gap t</th><th>Ore split</th><th></th></tr></thead>
       <tbody id="histBody"></tbody>
     </table>
     </div>
@@ -593,15 +561,14 @@ const KEY='tipm8.v1';
 const ORES=[{k:'Kopra',c:'#AC5E56'},{k:'Toka',c:'#1D8348'},{k:'Marawuwung',c:'#AE862B'},{k:'Araren',c:'#0E9BD0'},
             {k:'Alaskar',c:'#D9782E'},{k:'Scats',c:'#85929E'}];
 const oreColor=k=>(ORES.find(o=>o.k===k)||{c:'#8A9BAE'}).c;
-const REASONS=['No trucks','Crusher','Screen','Loader down','Blast','Weather','Shift change','Meal','Other'];
 /* Passcode on the two logging roles. Off and Watching stay open, so anyone can be handed
    the link to watch a shift, and only someone with the code can start writing trucks
    into it. Change it here and redeploy. It is in the page source like everything else,
    so it stops a wrong tap rather than a determined person. */
 const LOG_PIN='1234';
-const DEF={shift:{label:'',startedAt:null,endedAt:null},fleet:{payload:30,fill:0.9,trucks:6,excavators:2,loaders:2,targetTph:0,shiftHours:12},ore:ORES[0].k,loads:[],delays:[],history:[],mill:null,millOut:{}};
+const DEF={shift:{label:'',startedAt:null,endedAt:null},fleet:{payload:30,fill:0.9,trucks:6,excavators:2,loaders:2,targetTph:0,shiftHours:12},ore:ORES[0].k,loads:[],history:[],mill:null,millOut:{}};
 let S=(()=>{try{const r=store.get(KEY);if(r){const o=JSON.parse(r);
-  return{shift:{...DEF.shift,...(o.shift||{})},fleet:{...DEF.fleet,...(o.fleet||{})},ore:o.ore||DEF.ore,loads:o.loads||[],delays:o.delays||[],history:o.history||[],mill:o.mill||null,millOut:o.millOut||{}}}}catch(e){}
+  return{shift:{...DEF.shift,...(o.shift||{})},fleet:{...DEF.fleet,...(o.fleet||{})},ore:o.ore||DEF.ore,loads:o.loads||[],history:o.history||[],mill:o.mill||null,millOut:o.millOut||{}}}}catch(e){}
   return JSON.parse(JSON.stringify(DEF))})();
 
 /* ---- Live sync -------------------------------------------------------------
@@ -658,7 +625,7 @@ let role=(()=>{
   if(r==='off'){offMigrated=true;return 'viewer'}                  /* Off is gone, see below */
   return r;
 })();
-const NOSTREAM=()=>({rom:{loads:[],delays:[]},cos:{loads:[],delays:[]},at:null});
+const NOSTREAM=()=>({rom:{loads:[]},cos:{loads:[]},at:null});
 let remote=NOSTREAM();
 const party=()=>role==='rom'||role==='cos'?role:null;
 const primary=()=>role==='rom'?'rom':'cos';   /* a watcher leads with what reached the plant */
@@ -695,7 +662,10 @@ function snapshot(){
       target_tph:S.fleet.targetTph,shift_hours:S.fleet.shiftHours,device:deviceName()},
     p_loads:S.loads.map(l=>({id:l.id,logged_at:iso(l.t),ore:l.ore||'',tonnes:l.tonnes,
       trucks:l.trucks,excavators:l.exc,loaders:l.ldr})),
-    p_delays:S.delays.map(d=>({id:d.id,started_at:iso(d.t0),ended_at:iso(d.t1),reason:d.reason||''}))
+    /* Delays are gone from the app but the log still has the column and the function still takes
+       it, and a pad's push replaces what it sent last time. Sending an empty list is what sweeps
+       the old open-ended delays out as each pad comes up on this build. */
+    p_delays:[]
   };
 }
 function deviceName(){
@@ -729,9 +699,7 @@ function rowsFor(d,which){
   const num=(v,f)=>{const n=parseFloat(v);return isFinite(n)?n:f};
   return{
     loads:((d&&d.loads)||[]).filter(l=>l.party===which).map(l=>({id:l.id,t:Date.parse(l.logged_at),
-      ore:l.ore,tonnes:num(l.tonnes,0),trucks:l.trucks,exc:l.excavators,ldr:l.loaders})),
-    delays:((d&&d.delays)||[]).filter(x=>x.party===which).map(x=>({id:x.id,t0:Date.parse(x.started_at),
-      t1:x.ended_at?Date.parse(x.ended_at):null,reason:x.reason}))
+      ore:l.ore,tonnes:num(l.tonnes,0),trucks:l.trucks,exc:l.excavators,ldr:l.loaders}))
   };
 }
 
@@ -748,7 +716,6 @@ function remoteState(d){
       targetTph:num(sh.target_tph,0),shiftHours:num(sh.shift_hours,12)},
     ore:ORES[0].k,
     loads:mine.loads,
-    delays:mine.delays,
     history:[],
     mill:{key:sh.shift_date?{date:sh.shift_date,name:sh.shift_name}:shiftKey(),t:millMap(d&&d.milled)},
     millOut:{},
@@ -812,13 +779,12 @@ function renderDay(){
   if(!dayRows||!dayRows.length){box.hidden=true;return}
   box.hidden=false;
   const which=primary(), sum=f=>dayRows.reduce((a,r)=>a+(+r[f]||0),0);
-  const t=sum(which+'_tonnes'), mt=sum('milled_tonnes'), mh=sum('milled_hours'), dly=sum(which+'_delay_ms');
+  const t=sum(which+'_tonnes'), mt=sum('milled_tonnes'), mh=sum('milled_hours');
   const byName=nm=>dayRows.find(r=>r.shift_name===nm);
   $('#dDayWhen').textContent=fmtDate(dOf(dayFor))+', D/S + N/S';
   $('#yTonnes').textContent=fmtT(t);
   $('#yLoads').textContent=sum(which+'_loads');
   $('#yTph').textContent=n0(t/24);
-  $('#yDelay').textContent=dly?fmtDur(dly):'none';
   $('#yMill').textContent=mh?n0(mt/mh):'—';
   $('#yMillTotal').textContent=mh?fmtT(mt):'—';
   $('#yStock').textContent=mh?signed(sum('milled_tipped')-mt):'—';
@@ -886,18 +852,6 @@ const n1=v=>(v==null||!isFinite(v))?'—':(Math.round(v*10)/10).toLocaleString()
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const pct=v=>(v==null||!isFinite(v))?'—':Math.round(v*100)+'%';
 
-/* Delays: an open delay has no t1. Spans are clipped to the shift window so a
-   delay left running past the end of a shift cannot eat more than the shift. */
-const openDelay=()=>S.delays.find(d=>!d.t1)||null;
-function delaySpans(){
-  const start=S.shift.startedAt;if(!start)return[];
-  const end=endT();
-  return S.delays.map(d=>{
-    const a=Math.max(d.t0,start), b=Math.min(d.t1||end,end);
-    return{...d,a,b,ms:Math.max(0,b-a)};
-  }).filter(d=>d.ms>0||!d.t1);
-}
-
 /* Stats */
 function stats(){
   const n=S.loads.length, cum=S.loads.reduce((a,l)=>a+l.tonnes,0);
@@ -915,16 +869,10 @@ function stats(){
   const target=S.fleet.targetTph>0?tPerLoad()/S.fleet.targetTph*3600000:null;
   const sinceLast=n?Math.max(0,end-S.loads[n-1].t):null;
   const byOre={};for(const l of S.loads){const k=l.ore||'—';byOre[k]=byOre[k]||{t:0,n:0};byOre[k].t+=l.tonnes;byOre[k].n++}
-  const spans=delaySpans();
-  const delay=spans.reduce((a,d)=>a+d.ms,0);
-  const oper=Math.max(0,elapsed-delay);
-  const tphOp=oper>=60000?cum/(oper/3600000):null;
-  const util=elapsed>0?oper/elapsed:null;
-  /* Projection runs the shift out at the operating rate, assuming no further delay. */
+  /* Projection runs the rest of the shift out at the rate achieved so far. */
   const planMs=(S.fleet.shiftHours||0)*3600000;
   const left=planMs>0&&started&&!S.shift.endedAt?Math.max(0,planMs-elapsed):0;
-  const rate=tphOp!=null?tphOp:tphShift;
-  const proj=rate!=null&&planMs>0?cum+rate*(left/3600000):null;
+  const proj=tphShift!=null&&planMs>0?cum+tphShift*(left/3600000):null;
   const goal=S.fleet.targetTph>0&&planMs>0?S.fleet.targetTph*(planMs/3600000):null;
   const needTph=goal!=null&&left>60000?Math.max(0,(goal-cum)/(left/3600000)):null;
   /* Tips per hour is the figure an operator can act on without dividing tonnes by a
@@ -938,7 +886,7 @@ function stats(){
      as you fall behind. Once there is no plan left to catch up over it falls back to the
      flat target rate, which is the only sensible answer at that point. */
   const tipsNeed=(needTph!=null&&per>0)?needTph/per:tipsTarget;
-  return{n,cum,elapsed,tphShift,tph30,avgInt,lastInt,cycle,target,sinceLast,ints,byOre,spans,delay,oper,tphOp,util,planMs,left,proj,goal,needTph,nRoll,tipsRoll,tipsNeed,tipsTarget};
+  return{n,cum,elapsed,tphShift,tph30,avgInt,lastInt,cycle,target,sinceLast,ints,byOre,planMs,left,proj,goal,needTph,nRoll,tipsRoll,tipsNeed,tipsTarget};
 }
 
 function buckets(){
@@ -957,7 +905,6 @@ function buckets(){
 /* Rows written before sync existed have no id; give them one so they can be synced. */
 (()=>{let m=false;
   for(const l of S.loads)if(!l.id){l.id=uid();m=true}
-  for(const d of S.delays)if(!d.id){d.id=uid();m=true}
   if(S.shift.startedAt&&!S.shift.id){S.shift.id=uid();m=true}
   if(m&&!viewing())store.set(KEY,JSON.stringify(S));
 })();
@@ -983,9 +930,6 @@ function renderClock(){
   $('#tipsRoll').textContent=n1(st.tipsRoll);
   $('#tipsNeed').textContent=n1(st.tipsNeed);
   markRate($('#tipsRollStat'),st);
-  $('#tphOp').textContent=n0(st.tphOp);
-  $('#util').textContent=st.elapsed>0?pct(st.util):'—';
-  $('#delayTot').textContent=st.delay?fmtDur(st.delay):(S.shift.startedAt?'none':'—');
   $('#loads').textContent=st.n;
   $('#avgInt').textContent=fmtDur(st.avgInt);
   $('#lastInt').textContent=fmtDur(st.lastInt);
@@ -995,8 +939,6 @@ function renderClock(){
   $('#perTruck').textContent=per(f.trucks);
   $('#perExc').textContent=per(f.excavators);
   $('#perLdr').textContent=per(f.loaders);
-  const od=openDelay();
-  if(od)$('#delayClock').textContent=fmtClock(now()-od.t0);
   const el=$('#tphShiftStat'), tgt=f.targetTph;
   el.classList.toggle('ok',tgt>0&&st.tphShift!=null&&st.tphShift>=tgt);
   el.classList.toggle('low',tgt>0&&st.tphShift!=null&&st.tphShift<tgt);
@@ -1050,19 +992,6 @@ function renderFleet(){
   if(document.activeElement!==$('#shiftHours'))$('#shiftHours').value=f.shiftHours||'';
 }
 
-function renderDelay(){
-  const d=openDelay(), st=stats(), ended=!!S.shift.endedAt;
-  $('#delayChips').innerHTML=REASONS.map(r=>`<button type="button" data-reason="${esc(r)}">${esc(r)}</button>`).join('');
-  $$('#delayChips button').forEach(b=>b.disabled=!!d||ended);
-  $('#delayLive').hidden=!d;
-  $('#delayChips').hidden=!!d;
-  $('#delayNote').hidden=!!d;
-  if(d){
-    $('#delayClock').textContent=fmtClock(now()-d.t0);
-    $('#delayReason').textContent=esc(d.reason)+', opened '+fmtTime(d.t0);
-  }
-}
-
 function renderPace(){
   const st=stats(), tgt=S.fleet.targetTph>0;
   const bar=$('#shiftProg');
@@ -1078,15 +1007,6 @@ function renderPace(){
   const gap=st.proj!=null?st.proj-st.goal:null;
   p.textContent=st.needTph==null?'':`${n0(st.needTph)} tph needed`;
   p.style.color=gap==null?'':gap>=0?'var(--green)':'var(--amber)';
-}
-
-function renderDelayLog(){
-  const tb=$('#delayBody'), st=stats(), rate=st.tphOp;
-  if(!st.spans.length){tb.innerHTML='<tr><td colspan="7" class="empty">No delays logged this shift.</td></tr>';return}
-  tb.innerHTML=st.spans.map((d,i)=>({d,i})).reverse().map(({d,i})=>{
-    const lost=rate!=null?rate*d.ms/3600000:null;
-    return `<tr><td>${i+1}</td><td><span style="color:var(--amber)">${esc(d.reason)}</span></td><td>${fmtTime(d.a)}</td><td>${d.t1?fmtTime(d.b):'open'}</td><td class="r">${fmtDur(d.ms)}</td><td class="r">${lost==null?'—':fmtT(lost)}</td><td><button class="x" data-ddel="${i}" aria-label="Delete delay ${i+1}">×</button></td></tr>`;
-  }).join('');
 }
 
 /* Charts (plain SVG, no dependencies) */
@@ -1155,22 +1075,16 @@ function renderCum(){
   const stepMs=span<=2*3600000?30*60000:span<=6*3600000?3600000:2*3600000;
   const d0=new Date(start);d0.setMinutes(0,0,0);
   for(let t=d0.getTime();t<=end;t+=stepMs){if(t<start)continue;s+=`<text x="${xOf(t)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtHM(t)}</text>`}
-  for(const d of stats().spans){const x0=xOf(Math.max(d.a,start)),x1=xOf(Math.min(d.b,end));if(x1-x0>0.5)s+=`<rect x="${x0.toFixed(1)}" y="${PT}" width="${(x1-x0).toFixed(1)}" height="${IH}" fill="var(--amber)" opacity=".10"><title>${esc(d.reason)}, ${fmtDur(d.ms)}</title></rect>`}
   const path=pts.map((p,i)=>(i?'L':'M')+xOf(p[0]).toFixed(1)+' '+yOf(p[1],max).toFixed(1)).join(' ');
   s+=`<path d="${path} L${xOf(end).toFixed(1)} ${PT+IH} L${PL} ${PT+IH} Z" fill="var(--blue)" opacity=".12"/>`;
   s+=`<path d="${path}" fill="none" stroke="var(--blue)" stroke-width="2"/>`;
   if(tgtEnd>0)s+=`<line x1="${PL}" y1="${PT+IH}" x2="${xOf(end)}" y2="${yOf(tgtEnd,max)}" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="6 5"/>`;
-  /* the delay bands used to carry native titles, which these columns now sit over, so a delay
-     that ended since the previous load is named in that load's tooltip instead */
-  const spans=stats().spans;
-  let run=0, prevT=start;
+  let run=0;
   s+=tipNearest(S.loads.map(l=>{
     run+=l.tonnes;
-    const dl=spans.filter(d=>d.b>prevT&&d.b<=l.t);prevT=l.t;
     const pace=S.fleet.targetTph>0?S.fleet.targetTph*(l.t-start)/3600000:null;
     return{x:xOf(l.t),lines:[fmtHM(l.t),fmtT(run)+' '+P().total,
-      pace!=null?'target pace '+fmtT(pace)+' t, '+signed(run-pace):'',
-      ...dl.map(d=>'after '+d.reason+', '+fmtDur(d.ms))]};
+      pace!=null?'target pace '+fmtT(pace)+' t, '+signed(run-pace):'']};
   }));
   el.innerHTML=s+'</svg>';
 }
@@ -1219,7 +1133,7 @@ function histUnified(){
     const t=+(r[which+'_tonnes']||0);
     return{id:r.id,label:r.label||'',date:r.shift_date,name:r.shift_name,startedAt:a,hours:hrs,
       loads:+(r[which+'_loads']||0),tonnes:t,tph:(hrs>0)?t/hrs:null,
-      delay:+(r[which+'_delay_ms']||0),rom:+(r.rom_tonnes||0),cos:+(r.cos_tonnes||0),
+      rom:+(r.rom_tonnes||0),cos:+(r.cos_tonnes||0),
       byOre:r[which+'_by_ore']||null,open:!r.ended_at,
       milled:+(r.milled_hours||0)>0?+r.milled_tonnes:null,milledHours:+(r.milled_hours||0),
       milledTipped:+(r.milled_hours||0)>0?+(r.milled_tipped||0):null};
@@ -1228,22 +1142,20 @@ function histUnified(){
     const k=x.key||shiftKey(x.startedAt);
     return{id:null,label:x.label||'',date:k.date,name:k.name,startedAt:x.startedAt,
       hours:(x.endedAt-x.startedAt)/3600000,loads:x.loads,tonnes:x.tonnes,tph:x.tph,
-      delay:x.delay,rom:null,cos:null,byOre:x.byOre||null,open:false,
+      rom:null,cos:null,byOre:x.byOre||null,open:false,
       milled:x.milled!=null?x.milled:null,milledHours:x.milledHours||0,
       milledTipped:x.milledTipped!=null?x.milledTipped:null};
   });
 }
 const histFiltered=()=>histUnified().filter(x=>(!histFrom||x.date>=histFrom)&&(!histTo||x.date<=histTo));
 
-/* What the trend chart is plotting. Delay reads in minutes because a shift's delay in
-   milliseconds is unreadable and in hours is mostly decimal places. */
+/* What the trend chart is plotting. */
 const millAvg=x=>x.milledHours>0&&x.milled!=null?x.milled/x.milledHours:null;
 const tipAvg=x=>x.milledHours>0&&x.milledTipped!=null?x.milledTipped/x.milledHours:null;
 const METRICS={
   tonnes:{label:'Tonnes by shift', axis:v=>fmtT(v),      get:x=>x.tonnes},
   tph:   {label:'Shift average tph',axis:v=>Math.round(v),get:x=>x.tph},
   loads: {label:'Loads by shift',   axis:v=>Math.round(v),get:x=>x.loads},
-  delay: {label:'Delay by shift',   axis:v=>Math.round(v)+'m',get:x=>(x.delay||0)/60000},
   milled:{label:'Mill t/h, shift average',axis:v=>Math.round(v),get:x=>millAvg(x)||0},
   milledt:{label:'Milled tonnes by shift, total of the hourly entries',axis:v=>fmtT(v),get:x=>x.milled||0},
   /* Both as rates over the hours recorded, so a shift with eight readings compares fairly
@@ -1265,7 +1177,7 @@ async function viewShift(id){
     if(!r.ok)throw new Error('HTTP '+r.status);
     const d=await r.json();
     if(!d||!d.shift)throw new Error('that shift is no longer in the database');
-    openShift={id,shift:d.shift,loads:d.loads||[],delays:d.delays||[],milled:d.milled};
+    openShift={id,shift:d.shift,loads:d.loads||[],milled:d.milled};
   }catch(e){openShift=null;alert('Could not open that shift: '+(e.message||'no connection'))}
   openBusy=false;renderHist();renderShiftDetail();
 }
@@ -1282,10 +1194,7 @@ function renderShiftDetail(){
   const b=sh.ended_at?Date.parse(sh.ended_at):(o.loads.length?Math.max(...o.loads.map(l=>Date.parse(l.logged_at))):a);
   const ms=Math.max(0,b-a), hrs=ms/3600000;
   const t=mine.reduce((x,l)=>x+(+l.tonnes||0),0);
-  const dly=o.delays.filter(d=>(d.party==='rom'?'rom':'cos')===which&&d.ended_at)
-    .reduce((x,d)=>x+(Date.parse(d.ended_at)-Date.parse(d.started_at)),0);
-  const oper=Math.max(0,ms-dly);
-  const tph=hrs>0?t/hrs:null, tphOp=oper>60000?t/(oper/3600000):null;
+  const tph=hrs>0?t/hrs:null;
   const tgt=parseFloat(sh.target_tph)||0;
 
   $('#hdTitle').textContent=sh.shift_name+' shift, '+fmtDate(dOf(sh.shift_date))+(sh.label?' · '+sh.label:'');
@@ -1297,9 +1206,6 @@ function renderShiftDetail(){
     ['<div class="v">'+fmtT(t)+'</div><div class="l">tonnes</div>',''],
     ['<div class="v">'+mine.length+'</div><div class="l">'+P().many+'</div>',''],
     ['<div class="v">'+n0(tph)+'</div><div class="l">tph</div>',cls(tph)],
-    ['<div class="v">'+n0(tphOp)+'</div><div class="l">tph, delays excluded</div>',cls(tphOp)],
-    ['<div class="v">'+(ms>0?pct(oper/ms):'—')+'</div><div class="l">utilisation</div>',''],
-    ['<div class="v">'+(dly?fmtDur(dly):'none')+'</div><div class="l">delay</div>',''],
     ['<div class="v">'+(tgt>0?n0(tgt):'—')+'</div><div class="l">target tph</div>','']
   ].map(([h,c])=>'<div class="stat'+c+'">'+h+'</div>').join('');
 
@@ -1361,13 +1267,6 @@ function renderShiftDetail(){
      +PARTIES[other].label+' logged '+theirs.length+' '+PARTIES[other].many+', '
      +fmtT(theirs.reduce((x,l)=>x+(+l.tonnes||0),0))+' t on the same shift.</p>':'');
 
-  const ds=o.delays.filter(d=>(d.party==='rom'?'rom':'cos')===which);
-  $('#hdDelays').innerHTML=!ds.length?'':'<h3>Delays</h3><div class="tbl"><table>'
-    +'<thead><tr><th>Reason</th><th>From</th><th>To</th><th class="r">Length</th></tr></thead><tbody>'
-    +ds.map(d=>{const x=Date.parse(d.started_at), y=d.ended_at?Date.parse(d.ended_at):null;
-      return `<tr><td>${esc(d.reason||'—')}</td><td>${fmtTime(x)}</td>`
-        +`<td>${y?fmtTime(y):'still open'}</td><td class="r">${y?fmtDur(y-x):'—'}</td></tr>`}).join('')
-    +'</tbody></table></div>';
 }
 
 function renderHist(){
@@ -1406,7 +1305,6 @@ function renderHist(){
   s+=tipCols(h.map((x,i)=>({x0:PL+i*bw,x1:PL+(i+1)*bw,lines:[
     (x.name==='Night'?'Night':'Day')+' shift, '+fmtDate(dOf(x.date))+(x.open?', running':''),
     fmtT(x.tonnes)+' t · '+n0(x.tph)+' t/h · '+x.loads+' '+P().many,
-    'delay '+(x.delay?fmtDur(x.delay):'none'),
     x.milled!=null?'mill '+n0(millAvg(x))+' t/h avg, '+fmtT(x.milled)+' t over '+x.milledHours+' h':'',
     x.milled!=null&&tipAvg(x)!=null?'tipped '+n0(tipAvg(x))+' t/h over the same hours':'']})));
   el.innerHTML=s+'</svg>'
@@ -1429,7 +1327,6 @@ function renderHist(){
           +(x.milledHours<MILL_H?' <span class="live-tag">'+x.milledHours+'h</span>':''))+'</td>'
       +'<td class="r">'+(x.milled==null?'—':fmtT(x.milled))+'</td>'
       +'<td class="r">'+(x.milled==null||x.milledTipped==null?'—':signed(x.milledTipped-x.milled))+'</td>'
-      +'<td class="r">'+(x.delay?fmtDur(x.delay):'—')+'</td>'
       +'<td class="r">'+(x.rom==null?'—':fmtT(x.rom))+'</td>'
       +'<td class="r">'+(x.cos==null?'—':fmtT(x.cos))+'</td>'
       +'<td class="r">'+(g==null?'—':(g>=0?'+':'−')+fmtT(Math.abs(g)))+'</td>'
@@ -1562,7 +1459,7 @@ function renderPrev(st){
   if(!r||!r.started_at){box.hidden=true;return}
   box.hidden=false;
   const which=primary();
-  const t=+(r[which+'_tonnes']||0), n=+(r[which+'_loads']||0), dly=+(r[which+'_delay_ms']||0);
+  const t=+(r[which+'_tonnes']||0), n=+(r[which+'_loads']||0);
   const a=Date.parse(r.started_at);
   const b=r.ended_at?Date.parse(r.ended_at):(r.last_load?Date.parse(r.last_load):null);
   const hrs=(b&&b>a)?(b-a)/3600000:null;
@@ -1570,7 +1467,6 @@ function renderPrev(st){
   $('#pTonnes').textContent=fmtT(t);
   $('#pLoads').textContent=n;
   $('#pTph').textContent=(hrs>0)?n0(t/hrs):'—';
-  $('#pDelay').textContent=dly?fmtDur(dly):'none';
   $('#pMilled').textContent=+(r.milled_hours||0)>0?n0(+r.milled_tonnes/+r.milled_hours):'—';
   $('#pMillTotal').textContent=+(r.milled_hours||0)>0?fmtT(+r.milled_tonnes):'—';
   const dBox=$('#pDeltaBox'), dEl=$('#pDelta');
@@ -1600,13 +1496,12 @@ function renderDash(){
     :stale?'Last update '+fmtDur(now()-lastPull)+' ago'
     :'Live';
 
-  const od=openDelay(), al=$('#dAlert');
+  const al=$('#dAlert');
   const quiet=running&&st.sinceLast!=null&&st.sinceLast>15*60000;
   const clash=(src.openShifts||0)>1;
-  al.hidden=!(od||quiet||clash);
+  al.hidden=!(quiet||clash);
   if(clash){$('#dAlertK').textContent='Check';
-    $('#dAlertD').textContent=src.openShifts+' devices are logging at once. Showing the one that started most recently — set the others to Off or Watching.'}
-  else if(od){$('#dAlertK').textContent='Delayed';$('#dAlertD').textContent=od.reason+', '+fmtClock(now()-od.t0)}
+    $('#dAlertD').textContent=src.openShifts+' devices are logging at once. Showing the one that started most recently — set the others to Watching.'}
   else if(quiet){$('#dAlertK').textContent='No tip';$('#dAlertD').textContent='nothing logged for '+fmtDur(st.sinceLast)}
 
   $('#dNow').textContent=n0(st.tph30);
@@ -1622,9 +1517,6 @@ function renderDash(){
   $('#dLoads').textContent=st.n;
   $('#dElapsed').textContent=S.shift.startedAt?fmtClock(st.elapsed):'—';
   $('#dLeft').textContent=st.left>0?fmtDur(st.left):'—';
-  $('#dOp').textContent=n0(st.tphOp);
-  $('#dUtil').textContent=st.elapsed>0?pct(st.util):'—';
-  $('#dDelay').textContent=st.delay?fmtDur(st.delay):(S.shift.startedAt?'none':'—');
   $('#dSince').textContent=st.sinceLast==null?'—':fmtDur(st.sinceLast);
   $('#dTips').textContent=n1(st.tipsRoll);
   $('#dTipsNeed').textContent=n1(st.tipsNeed);
@@ -2068,7 +1960,7 @@ function renderMill(){
   }).join('');
 }
 
-function renderAll(){renderShiftControls();renderOre();renderFleet();renderDelay();renderClock();renderPace();renderSplit();renderCharts();renderLog();renderDelayLog();renderHist();renderSync();renderParty();renderRecon();renderMill();renderDash()}
+function renderAll(){renderShiftControls();renderOre();renderFleet();renderClock();renderPace();renderSplit();renderCharts();renderLog();renderHist();renderSync();renderParty();renderRecon();renderMill();renderDash()}
 
 /* Actions */
 let locked=false, flashTimer=null;
@@ -2079,7 +1971,6 @@ function tip(){
   locked=true;
   const t=now();
   if(!S.shift.startedAt){S.shift.startedAt=shiftStart(t);S.shift.key=shiftKey(t)}
-  const od=openDelay();if(od)od.t1=t;
   S.loads.push({id:uid(),t,ore:S.ore,tonnes:tPerLoad(),trucks:S.fleet.trucks,exc:S.fleet.excavators,ldr:S.fleet.loaders});
   save();
   if(navigator.vibrate)navigator.vibrate(40);
@@ -2091,22 +1982,6 @@ function tip(){
   flashTimer=setTimeout(()=>{b.classList.remove('logged');locked=false;renderShiftControls()},1500);
   renderAll();
 }
-function startDelay(reason){
-  if(S.shift.endedAt||openDelay()||viewing())return;
-  const t=now();
-  if(!S.shift.startedAt)S.shift.startedAt=t;
-  S.delays.push({id:uid(),t0:t,t1:null,reason});
-  save();renderAll();
-}
-function endDelay(){const d=openDelay();if(!d)return;d.t1=now();save();renderAll()}
-function delDelay(i){
-  const sp=stats().spans[i];if(!sp)return;
-  if(!confirm('Delete the '+sp.reason+' delay opened at '+fmtTime(sp.a)+'?'))return;
-  const j=S.delays.findIndex(x=>x.t0===sp.t0&&x.reason===sp.reason);
-  if(j>-1)S.delays.splice(j,1);
-  save();renderAll();
-}
-
 
 /* File the shift on the deck into this device's own history and push it one last time. */
 function archiveShift(){
@@ -2116,7 +1991,7 @@ function archiveShift(){
     const ms=(S.mill&&sk&&sameKey(S.mill.key,sk))?millSum(millRows(sk,S.loads,S.mill.t)):null;
     S.history.push({milled:ms&&ms.hours?Math.round(ms.milled*10)/10:null,milledHours:ms?ms.hours:0,
       milledTipped:ms&&ms.hours?Math.round(ms.tipped*10)/10:null,
-      id:S.shift.startedAt,label:S.shift.label||'',key:sk,startedAt:S.shift.startedAt,endedAt:endT(),loads:st.n,tonnes:Math.round(st.cum*10)/10,tph:st.tphShift,tphOp:st.tphOp,delay:st.delay,byOre:Object.fromEntries(Object.entries(st.byOre).map(([k,v])=>[k,Math.round(v.t*10)/10])),trucks:last.trucks,exc:last.exc,ldr:last.ldr});
+      id:S.shift.startedAt,label:S.shift.label||'',key:sk,startedAt:S.shift.startedAt,endedAt:endT(),loads:st.n,tonnes:Math.round(st.cum*10)/10,tph:st.tphShift,byOre:Object.fromEntries(Object.entries(st.byOre).map(([k,v])=>[k,Math.round(v.t*10)/10])),trucks:last.trucks,exc:last.exc,ldr:last.ldr});
     if(S.history.length>60)S.history=S.history.slice(-60);
   }
   if(party()&&S.shift.id&&S.shift.startedAt){pending[S.shift.id]=snapshot();schedulePush()}
@@ -2135,17 +2010,10 @@ function rollShift(){
   if(b<=S.shift.startedAt)return false;        /* clock jumped backwards: leave it alone */
   const carry=S.loads.filter(l=>l.t>=b);
   S.loads=S.loads.filter(l=>l.t<b);
-  const od=openDelay();
-  let carryDelay=null;
-  if(od){
-    if(od.t0>=b){S.delays=S.delays.filter(d=>d!==od);carryDelay=od}
-    else{od.t1=b;carryDelay={id:uid(),t0:b,t1:null,reason:od.reason}}
-  }
   if(!S.shift.endedAt)S.shift.endedAt=b;
   archiveShift();                              /* pushes the closed shift before the deck clears */
   S.shift={id:uid(),label:'',startedAt:b,endedAt:null,key:shiftKey(b)};
   S.loads=carry;
-  S.delays=carryDelay?[carryDelay]:[];
   save();
   return true;
 }
@@ -2200,7 +2068,7 @@ async function exportShiftCsv(id){
     d=await r.json();
   }catch(e){alert('Could not fetch that shift: '+(e.message||'no connection'));return}
   if(!d||!d.shift){alert('That shift is no longer in the database.');return}
-  const sh=d.shift, loads=d.loads||[], delays=d.delays||[];
+  const sh=d.shift, loads=d.loads||[];
   const rows=[];
   rows.push(['shift',sh.shift_date,sh.shift_name,sh.label||'']);
   rows.push(['started',sh.started_at||'','ended',sh.ended_at||'']);
@@ -2218,18 +2086,6 @@ async function exportShiftCsv(id){
       l.device||'']);
     prev[p]=t;
   });
-  if(delays.length){
-    rows.push([]);
-    rows.push(['party','delay','from_iso','from','to','reason','length_s']);
-    const dn={rom:0,cos:0};
-    delays.forEach(x=>{
-      const p=x.party==='rom'?'rom':'cos', a=Date.parse(x.started_at);
-      const b=x.ended_at?Date.parse(x.ended_at):null;
-      dn[p]++;
-      rows.push([p,dn[p],x.started_at,fmtTime(a),b?fmtTime(b):'still open',x.reason||'',
-        b?Math.round((b-a)/1000):'']);
-    });
-  }
   if(Array.isArray(d.milled)&&d.milled.length){
     const mr=millRows({date:sh.shift_date,name:sh.shift_name},
       loads.filter(l=>l.party!=='rom').map(l=>({t:Date.parse(l.logged_at),tonnes:+l.tonnes||0})),millMap(d.milled));
@@ -2244,12 +2100,10 @@ async function exportShiftCsv(id){
     rows.push(['mill_hours_recorded','mill_tph_average','mill_total_t','tipped_tph_same_hours','cos_stock_change_t']);
     rows.push([ms.hours,r1(ms.rate),r1(ms.milled),r1(ms.tippedRate),r1(ms.stock)]);
   }
-  const delayMs=p=>delays.filter(x=>(x.party==='rom'?'rom':'cos')===p&&x.ended_at)
-    .reduce((a,x)=>a+(Date.parse(x.ended_at)-Date.parse(x.started_at)),0);
   rows.push([]);
-  rows.push(['summary','loads','tonnes','delay_s']);
-  ['rom','cos'].forEach(p=>rows.push([PARTIES[p].label,seq[p],Math.round(cum[p]*10)/10,Math.round(delayMs(p)/1000)]));
-  rows.push(['gap, ROM less COS',seq.rom-seq.cos,Math.round((cum.rom-cum.cos)*10)/10,'']);
+  rows.push(['summary','loads','tonnes']);
+  ['rom','cos'].forEach(p=>rows.push([PARTIES[p].label,seq[p],Math.round(cum[p]*10)/10]));
+  rows.push(['gap, ROM less COS',seq.rom-seq.cos,Math.round((cum.rom-cum.cos)*10)/10]);
   download('tipm8-'+sh.shift_date+'-'+String(sh.shift_name||'').toLowerCase()+'.csv',toCsv(rows),'text/csv');
 }
 
@@ -2262,7 +2116,7 @@ async function exportShiftCsv(id){
    and adding them together would double the day. */
 function fullCsvRows(d){
   const r1=v=>Math.round((+v||0)*10)/10;
-  const loads=(d.loads||[]), shifts=(d.shifts||[]), delays=(d.delays||[]), milled=(d.milled||[]);
+  const loads=(d.loads||[]), shifts=(d.shifts||[]), milled=(d.milled||[]);
   const rows=[];
   rows.push(['TipM8 export','site',d.site||'','from',d['from']||'','to',d['to']||'']);
   rows.push(['generated',iso(now()),'shifts',shifts.length,'loads',loads.length]);
@@ -2324,17 +2178,12 @@ function fullCsvRows(d){
     mday[m.shift_date]=mday[m.shift_date]||{t:0,h:0};
     if(m.tonnes!=null){mday[m.shift_date].t+=(+m.tonnes||0);mday[m.shift_date].h++}
   });
-  const dday={}; delays.forEach(x=>{
-    if(!x.ended_at)return;
-    const k=x.shift_date+'|'+x.party;
-    dday[k]=(dday[k]||0)+(Date.parse(x.ended_at)-Date.parse(x.started_at));
-  });
   rows.push([]);
   rows.push(['DAY TOTALS']);
-  rows.push(['date','party','loads','tonnes','delay_s','mill_t_recorded','mill_hours_recorded']);
+  rows.push(['date','party','loads','tonnes','mill_t_recorded','mill_hours_recorded']);
   Object.keys(byDay).sort().forEach(k=>{
     const [date,party]=k.split('|'), a=byDay[k], m=mday[date]||{t:0,h:0};
-    rows.push([date,party,a.n,r1(a.tot),Math.round((dday[k]||0)/1000),
+    rows.push([date,party,a.n,r1(a.tot),
       party==='cos'?r1(m.t):'',party==='cos'?m.h:'']);
   });
 
@@ -2345,17 +2194,6 @@ function fullCsvRows(d){
   shifts.forEach(x=>rows.push([x.shift_date,x.shift_name,x.label||'',x.started_at||'',x.ended_at||'',
     x.payload==null?'':x.payload,x.fill==null?'':x.fill,
     x.target_tph==null?'':x.target_tph,x.shift_hours==null?'':x.shift_hours]));
-
-  if(delays.length){
-    rows.push([]);
-    rows.push(['DELAYS']);
-    rows.push(['date','shift','party','from_iso','from','to','reason','length_s']);
-    delays.forEach(x=>{
-      const a=Date.parse(x.started_at), b=x.ended_at?Date.parse(x.ended_at):null;
-      rows.push([x.shift_date,x.shift_name,x.party,x.started_at,fmtTime(a),b?fmtTime(b):'still open',
-        x.reason||'',b?Math.round((b-a)/1000):'']);
-    });
-  }
 
   if(milled.length){
     rows.push([]);
@@ -2392,11 +2230,11 @@ async function exportAllCsv(){
 function exportRangeCsv(){
   const rows=histFiltered();
   if(!rows.length){alert('No shifts in view to export.');return}
-  const out=[['shift_date','shift','hours','loads','tonnes','tph','delay_s','rom_tonnes','cos_tonnes','gap_t','ore_split',
+  const out=[['shift_date','shift','hours','loads','tonnes','tph','rom_tonnes','cos_tonnes','gap_t','ore_split',
                'mill_tph_average','mill_total_t','mill_hours','tipped_tph_same_hours','cos_stock_change_t']];
   rows.slice().reverse().forEach(x=>out.push([
     x.date,x.name,x.hours!=null?Math.round(x.hours*100)/100:'',x.loads,
-    Math.round(x.tonnes*10)/10,x.tph!=null?Math.round(x.tph):'',Math.round((x.delay||0)/1000),
+    Math.round(x.tonnes*10)/10,x.tph!=null?Math.round(x.tph):'',
     x.rom==null?'':Math.round(x.rom*10)/10,x.cos==null?'':Math.round(x.cos*10)/10,
     (x.rom!=null&&x.cos!=null)?Math.round((x.rom-x.cos)*10)/10:'',
     x.byOre?ORES.filter(o=>x.byOre[o.k]).map(o=>o.k+' '+Math.round(x.byOre[o.k])).join(' / '):'',
@@ -2413,11 +2251,6 @@ function exportCsv(){
   let cum=0;
   S.loads.forEach((l,i)=>{cum+=l.tonnes;rows.push([label,i+1,new Date(l.t).toISOString(),fmtTime(l.t),l.ore||'',l.tonnes,i?Math.round((l.t-S.loads[i-1].t)/1000):'',Math.round(cum*10)/10,l.trucks,l.exc,l.ldr])});
   const st=stats();
-  if(st.spans.length){
-    rows.push([]);
-    rows.push(['shift','delay','from_iso','from','reason','length_s','','','','','']);
-    st.spans.forEach((d,i)=>rows.push([label,i+1,new Date(d.a).toISOString(),fmtTime(d.a),d.reason,Math.round(d.ms/1000),'','','','','']));
-  }
   const mk=keyOf(S.shift);
   if(mk&&S.mill&&sameKey(S.mill.key,mk)&&Object.keys(S.mill.t).length){
     const mr=millRows(mk,S.loads,S.mill.t), r1=v=>Math.round(v*10)/10;
@@ -2426,8 +2259,8 @@ function exportCsv(){
     mr.forEach(r=>rows.push([iso(r.h),hourLabel(r.h),r1(r.tipped),r.milled==null?'':r.milled,r.milled==null?'':r1(r.tipped-r.milled),'','','','','','']));
   }
   rows.push([]);
-  rows.push(['summary','elapsed_s','delay_s','operating_s','tonnes','tph_elapsed','tph_operating','utilisation','','','']);
-  rows.push([label,Math.round(st.elapsed/1000),Math.round(st.delay/1000),Math.round(st.oper/1000),Math.round(st.cum*10)/10,st.tphShift==null?'':Math.round(st.tphShift),st.tphOp==null?'':Math.round(st.tphOp),st.util==null?'':Math.round(st.util*100)/100,'','','']);
+  rows.push(['summary','elapsed_s','tonnes','tph_elapsed','','','','','','','']);
+  rows.push([label,Math.round(st.elapsed/1000),Math.round(st.cum*10)/10,st.tphShift==null?'':Math.round(st.tphShift),'','','','','','','']);
   download('tipm8-'+label.replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')+'-'+new Date().toISOString().slice(0,10)+'.csv',
     toCsv(rows),'text/csv');
 }
@@ -2448,7 +2281,7 @@ function restore(file){
     const d=o&&o.data&&typeof o.data==='object'?o.data:o;
     if(!d||!Array.isArray(d.loads)||!Array.isArray(d.history))return alert('That does not look like a TipM8 backup.');
     if(!confirm(`Replace everything on this device with this backup? It holds ${d.loads.length} load${d.loads.length===1?'':'s'} in the current shift and ${d.history.length} finished shift${d.history.length===1?'':'s'}.`))return;
-    S={shift:{...DEF.shift,...(d.shift||{})},fleet:{...DEF.fleet,...(d.fleet||{})},ore:d.ore||DEF.ore,loads:d.loads,delays:d.delays||[],history:d.history,mill:d.mill||null,millOut:{}};
+    S={shift:{...DEF.shift,...(d.shift||{})},fleet:{...DEF.fleet,...(d.fleet||{})},ore:d.ore||DEF.ore,loads:d.loads,history:d.history,mill:d.mill||null,millOut:{}};
     save();renderAll();
   };
   r.onerror=()=>alert('Could not read that file.');
@@ -2465,7 +2298,6 @@ $('#csvBtn').addEventListener('click',exportCsv);
 $('#backupBtn').addEventListener('click',backup);
 $('#restoreBtn').addEventListener('click',()=>$('#restoreFile').click());
 $('#restoreFile').addEventListener('change',e=>{const f=e.target.files[0];if(f)restore(f);e.target.value=''});
-$('#delayEnd').addEventListener('click',endDelay);
 $('#syncChips').addEventListener('click',e=>{const b=e.target.closest('[data-role]');if(b)setRole(b.dataset.role)});
 $('#histFrom').addEventListener('change',e=>{histFrom=e.target.value||'';renderHist();pullHistory(true)});
 $('#histTo').addEventListener('change',e=>{histTo=e.target.value||'';renderHist();pullHistory(true)});
@@ -2514,8 +2346,6 @@ $('#millBody').addEventListener('change',e=>{
 });
 $('#millBody').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.closest('.mill-in'))e.target.blur()});
 $('#millBody').addEventListener('focusout',()=>setTimeout(()=>{if(!$('#millBody').contains(document.activeElement))renderMill()},0));
-$('#delayChips').addEventListener('click',e=>{const b=e.target.closest('[data-reason]');if(b)startDelay(b.dataset.reason)});
-$('#delayBody').addEventListener('click',e=>{const b=e.target.closest('[data-ddel]');if(b)delDelay(+b.dataset.ddel)});
 $('#clearBtn').addEventListener('click',clearAll);
 $('#shiftLabel').addEventListener('input',e=>{S.shift.label=e.target.value.trim();save()});
 $('#oreSel').addEventListener('click',e=>{const b=e.target.closest('[data-ore]');if(!b)return;S.ore=b.dataset.ore;save();renderOre();renderShiftControls()});
@@ -2555,7 +2385,7 @@ const numIn=(id,k,min,max)=>$('#'+id).addEventListener('change',e=>{
   let v=parseFloat(e.target.value);
   if(!isFinite(v))v=k==='targetTph'?0:DEF.fleet[k];
   S.fleet[k]=Math.max(min,Math.min(max,v));
-  save();renderFleet();renderClock();renderPace();renderShiftControls();renderCharts();renderDelayLog();
+  save();renderFleet();renderClock();renderPace();renderShiftControls();renderCharts();
 });
 numIn('payload','payload',1,500);
 numIn('fill','fill',0.1,1.5);
@@ -2579,7 +2409,7 @@ renderAll();
 if(urlParty&&urlParty!==role)setTimeout(()=>setRole(urlParty),0);
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))
   navigator.serviceWorker.register('sw.js').catch(()=>{});
-setInterval(()=>{if(rollShift())renderAll();renderClock();renderPace();renderSync();renderDash();if(now()-lastChart>60000){renderCharts();renderDelayLog()}},1000);
+setInterval(()=>{if(rollShift())renderAll();renderClock();renderPace();renderSync();renderDash();if(now()-lastChart>60000){renderCharts()}},1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){rollShift();if(viewing())pull();else renderAll()}});
 })();
 </script>

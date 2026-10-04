@@ -1,7 +1,7 @@
-i87# TipM8 — COS tipping log
+# TipM8 — COS tipping log
 
 Truck tipping log and rate tracker for the ROM pad. Tap a button each time a truck tips
-to the COS, log the delays in between, and watch the shift rate against target.
+to the COS and watch the shift rate against target.
 
 Everything the app does lives in `index.html` (markup, styles, script). No build step,
 no dependencies. The other files only exist to make it installable and offline-capable.
@@ -23,18 +23,17 @@ stamped with the ore source and the fleet counts running at the time. Space bar 
 The number keys pick the ore source, one per source in the order they are listed. The shift clock starts on the first tip, measured from the
 changeover rather than from the tip.
 
-**Delays.** Tap a reason chip — No trucks, Crusher, Screen, Loader down, Blast, Weather,
-Shift change, Meal, Other — to open a delay. It runs a clock until you end it, and
-logging a tip closes it automatically, on the grounds that the delay is over once
-material moves again. Delay time is subtracted from elapsed time to give:
-
-- **tph, delays excluded** — the rate the operation actually ran at
-- **utilisation** — operating time over elapsed time
-- **t forgone** — each delay's length priced at the operating rate
+**No delay log.** There was one, and it is gone as of 5 October 2026. It asked the pad to
+open a delay on a reason chip and close it when material moved again, and in practice the
+opening happened and the closing did not. An unclosed delay keeps running: it inflates the
+delay total, drags operating time down towards nothing, and every figure derived from it —
+tph excluding delays, utilisation, tonnes forgone — becomes wrong in a way that is not
+obvious from looking at it. Those three figures are gone with it. Tonnes, loads and tph are
+measured against the clock, which nobody has to remember to stop.
 
 **Pace.** Set shift hours (default 12) and, optionally, a target tph. The bar under the
 stats shows how far through the shift you are; beside it, projected end-of-shift tonnes
-at the current operating rate, and the tph needed from here to land on target — green if
+at the rate achieved so far, and the tph needed from here to land on target — green if
 the projection clears the goal, amber if it does not.
 
 **Tips per hour, rolling against required.** Tonnes per hour has to be divided by a
@@ -124,7 +123,7 @@ detail view and CSV. The ROM pad does not see any of it.
 **Previous 24 hours.** Under the previous shift, the watcher's dashboard carries the last full
 production day — a Day shift and the Night shift that follows it, 06:30 to 06:30 — which is
 always the day before the shift running now, so during the night of the 17th it is still the
-16th. Tonnes, loads, t/h over the 24 hours, delay, mill t/h average and total, and COS stock,
+16th. Tonnes, loads, t/h over the 24 hours, mill t/h average and total, and COS stock,
 with a line splitting it by shift and saying how many of the 24 hours the mill covers. A
 shift nobody logged says *not logged* rather than counting as zero. It is fetched on its own,
 so the date filter on Previous shifts cannot hide it.
@@ -139,14 +138,13 @@ drops the most recent one.
 
 **Shifts.** Shifts change over on their own at **06:30 and 18:30**. The shift on the
 deck is closed at the changeover instant rather than whenever the app next woke up, filed
-into Previous shifts with its tonnes, both tph figures, delay total and ore split, and a
+into Previous shifts with its tonnes, its tph and its ore split, and a
 new shift opens stamped with the changeover time. Fleet settings carry over. Nobody has
 to remember a tap: the changeover fires from the clock tick, from the next tip, and when
 a sleeping device wakes, so an iPad left in a pocket across 18:30 catches up on unlock.
 
 Anything stamped after the changeover moves across to the new shift rather than being
-counted against the old one, and a delay still open at the boundary is closed on the old
-shift and reopened on the new one, so neither shift is credited with the other's time.
+counted against the old one, so neither shift is credited with the other's tonnes.
 
 There is no End shift, New shift or Start shift clock any more. With the changeover closing
 and opening shifts on its own they could only do harm: on 17 Sep End shift followed by New
@@ -158,10 +156,10 @@ shift before the buttons went reopens it on load if it is still inside that shif
 Saved in the browser's local storage on each device (key `tipm8.v1`) — it survives a
 refresh, but it is per-device and per-browser, and clearing site data wipes it.
 
-- **Backup JSON** writes the whole store — current shift, delays, fleet settings and
+- **Backup JSON** writes the whole store — current shift, fleet settings and
   shift history — to a file. **Restore JSON** reads one back, replacing what is on the
   device. That is the way to move a log between devices.
-- **Export CSV** gives one row per load, then the delay log, then a shift summary row.
+- **Export CSV** gives one row per load, then a shift summary row.
   This one is the current shift on *this* device, from local storage.
 
 ### Getting shifts out as CSV
@@ -171,19 +169,19 @@ one that never logged it.
 
 - **CSV** on a shift's row gives that shift in full: both parties' loads interleaved in
   time, each with its party, sequence, ISO timestamp, local time, ore, tonnes, interval,
-  running total, fleet counts and the device that logged it. Then the delay log, then a
+  running total, fleet counts and the device that logged it. Then a
   summary per party with the ROM-less-COS gap. Sequence, interval and running total are
   counted **per party**, so a ROM row's interval is the time since the previous *ROM*
   load, not since whatever happened to be logged in between.
 - **Export these shifts** gives one row per shift across whatever the date filter is
-  showing — hours, loads, tonnes, tph, delay, ROM and COS tonnes, gap and ore split. That
+  showing — hours, loads, tonnes, tph, ROM and COS tonnes, gap and ore split. That
   is the one for trending a month; the per-shift export is the one for auditing a shift.
 
 - **Export everything** gives the whole range in one file, which is the one the geology side
   asks for. It comes from the database in a single call rather than a round trip per shift, so
   a month is one request that either works or does not. Sections, in order: every load; **the
   blend by ore for each day**; the same split by shift; day totals; the shifts as they were set
-  up; delays; and the mill hour by hour.
+  up; and the mill hour by hour.
 
   Ore figures are kept **per party**. The ROM pad and the COS are two counts of the same
   material moving, so adding them together would double the day — each row says which party it
@@ -197,7 +195,9 @@ beside it is local to whichever device did the export, for reading rather than f
 ## Live sync and the two portals
 
 Local storage is per device, so sharing a shift needs a backend. TipM8 uses a Supabase
-project (`TipM8`, ap-southeast-1) with three tables — `shifts`, `loads`, `delays`.
+project (`TipM8`, ap-southeast-1). The tables are `shifts`, `loads` and `milled`; a
+`delays` table is still there holding what was recorded before the feature was removed, and
+nothing reads it.
 
 Two parties log the same trucks from opposite ends of the haul: mine geology as material
 leaves the ROM pad, process operations as it tips at the COS. Both write to one shift and
@@ -237,15 +237,13 @@ A logging role writes to the device first and queues, and says so in the status 
 The watcher's dashboard leads with rate, because that is what someone glancing at it
 needs first: tph over the last 30 minutes, shift average, tonnes to COS and the target,
 sized to be read across a room and coloured green or amber against target. Under that
-sits the pace bar and projection, then loads, elapsed, time left, operating tph,
-utilisation, delay total and time since the last tip. The ore split, charts, load log and
-delay log follow underneath unchanged.
+sits the pace bar and projection, then loads, elapsed, time left and time since the last
+tip. The ore split, charts and load log follow underneath unchanged.
 
 A banner above the numbers calls out the thing worth interrupting someone for:
 
-- **Delayed** — a delay is open, with its reason and a running clock
-- **No tip** — nothing logged for over 15 minutes with no delay recorded, which usually
-  means a delay nobody opened
+- **No tip** — nothing logged for over 15 minutes, which means either a stoppage or a pad
+  that has stopped being tapped
 - **Check** — more than one device is Logging. The watcher follows whichever shift started
   most recently, and says so rather than quietly picking one
 
@@ -257,11 +255,15 @@ it.
 for sending. If there is no signal the queue holds, the status line says so, and it
 drains when the connection returns. A dropped signal costs lag, not data.
 
-Sync is one function call, `sync_party`, which upserts a party's shift, loads and
-delays and prunes what that device deleted locally, in one transaction. Loads and delays
-carry client-generated UUIDs so a retry can never double up a tip. Watchers call
-`active_shift`, which returns the newest shift with its loads and delays, plus a summary
-of the shift before it, in a single round trip.
+Sync is one function call, `sync_party`, which upserts a party's shift and loads and
+prunes what that device deleted locally, in one transaction. Loads carry client-generated
+UUIDs so a retry can never double up a tip. Watchers call `active_shift`, which returns the
+newest shift with its loads, plus a summary of the shift before it, in a single round trip.
+
+The call still takes a delay list and still returns one, and the app now sends an empty
+list every time. That is deliberate: the signature is unchanged, so an older build on a pad
+that has not reloaded keeps working, and each pad sweeps its own leftover delays out of the
+log the first time it syncs on this build.
 
 `active_shift` orders by `started_at desc` and nothing else. It used to prefer a shift
 with no `ended_at`, which meant any shift left unclosed outranked every newer finished
@@ -270,19 +272,19 @@ shifts are keyed on date and Day/Night, so an older open shift is always a lefto
 
 Finished shifts are read back from the database with `shift_summaries(site, from, to,
 limit)`, so a watching device that has logged nothing still sees the history. The
-Previous shifts table takes a From and To date, reports loads, tonnes, tph, delay and the
+Previous shifts table takes a From and To date, reports loads, tonnes, tph and the
 ROM/COS gap per shift, and falls back to this device's own log when the page is offline
 or set to Off — the note under the date boxes says which of the two you are reading.
 
 ### Looking back
-The trend chart plots **tonnes, tph, loads or delay** across the shifts in view, picked
+The trend chart plots **tonnes, tph, loads, mill t/h, milled tonnes or tipped against
+mill** across the shifts in view, picked
 from the Trend box. Day and night are drawn in different colours and never merged: they
 are different crews on different rates, and a trend that blends them hides the comparison
 worth making.
 
-**View** on any row opens that shift — headline tonnes, count, tph, tph with delays
-excluded, utilisation and delay, then its **tonnes by hour**, its ore split and its delay
-log. The hourly profile is the useful part: a shift average tells you a night was slow,
+**View** on any row opens that shift — headline tonnes, count, tph and target, then its
+**tonnes by hour** and its ore split. The hourly profile is the useful part: a shift average tells you a night was slow,
 the profile tells you which two hours it happened in. Each hour is judged against the
 target tph, since an hour's tonnes is that hour's rate; the target line is only drawn when
 it fits on the scale, and the legend says so rather than claiming a line that is not there.
@@ -303,7 +305,7 @@ contributing rows cannot overwrite them. Both come from the same morning: a wipe
 back carrying factory defaults, synced an empty shift, and zeroed the target tph for
 everyone, because the upsert took the last writer's settings unconditionally. The rule now
 is that a device's payload, fill, fleet, target and shift hours are written to the shift
-only if that device is actually putting loads or delays into it. Otherwise the shift keeps
+only if that device is actually putting loads into it. Otherwise the shift keeps
 what it has, and a brand new shift starts from the previous one rather than from whatever
 the first device to sync happened to be carrying.
 
@@ -377,13 +379,25 @@ unattended hour from 06:30.
 
 **A live shift cannot stay ended.** End shift followed by New shift used to leave the
 shift marked as ended while trucks kept tipping into it, freezing elapsed on the dashboard.
-A pad contributing loads or delays now sets or clears the end time; a silent pad still
+A pad contributing loads now sets or clears the end time; a silent pad still
 cannot touch it.
 
 Deleting a shift from the database does not make it stay deleted. A device that still
 holds that shift as its current shift re-sends it on the next sync and `sync_party`
 recreates it, new row id and all. Move the device off the shift first — a changeover does
 this on its own now — and delete afterwards.
+
+**A pad in another timezone starts the wrong shift.** Which shift it is comes from the
+device's own clock: past 06:30 is Day, past 18:30 is Night. That is right for a pad on the
+pad and wrong for anyone who opens a logging role from somewhere else. On 5 October 2026 a
+device three hours ahead was opened at 06:30 its time — 03:30 at site, the middle of Night
+shift — rolled over, and synced a `2026-10-05 Day` shift with no loads in it. Site data was
+untouched, but `active_shift` picks the most recently started shift, so the watching page
+showed the empty Day shift instead of the Night shift that was running, and the two-devices
+banner came up.
+
+Anyone looking from off site sets their device to **Watching**, which reads and never
+writes. A logging role carries the clock with it.
 
 ### Access
 Watching is open; logging is not. Choosing **ROM pad** or **COS** asks for a four-digit
@@ -422,7 +436,7 @@ Bump `CACHE` in `sw.js` if you ever need to force every device to drop its cache
 
 ## Notes
 - Ore sources are listed in `ORES` near the top of the script — edit names or colours
-  there. Delay reasons are in `REASONS` just below. Names are the key, not a label: the ore
+  there. Names are the key, not a label: the ore
   colour standard, every export and the blend figures all match on the name as spelled, so a
   source added here has to be spelled the way the site spells it. The current list is Kopra,
   Toka, Marawuwung, Araren, Alaskar and Scats; number keys 1 to 6 pick them in that order.
