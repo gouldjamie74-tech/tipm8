@@ -153,7 +153,13 @@ shift refuses tips until the next changeover — up to twelve hours. A pad that 
 shift before the buttons went reopens it on load if it is still inside that shift's window.
 
 ## Mobile crusher
-`crusher.html`, linked from the header, logs a mobile crusher by the bucket: **excavator
+**The app opens on this page.** `index.html` sends every visitor to `crusher.html` unless the
+address carries `?main=1`, which is the page's link back to ROM pad and COS, or `?party=`, so
+existing bookmarks still work. A pad that was logging ROM pad or COS keeps its log and sends
+anything queued the next time it opens that page. To make ROM/COS the front page again, remove
+the short script at the top of `index.html`.
+
+`crusher.html` logs a mobile crusher by the bucket: **excavator
 buckets in, loader buckets and truck loads out**, tapped by one person on one device. The ore
 sources are the usual ones without Scats, and one ore selection applies to all three buttons.
 A row in the tap log can be corrected if the two sides were on different ore at a change.
