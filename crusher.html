@@ -1,0 +1,954 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E141B">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>TipM8 — Mobile crusher</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter+Tight:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E141B; --surface:#151D26; --line:#243040; --text:#E8EEF4; --muted:#8A9BAE;
+  --blue:#7DD3FF; --amber:#F5B335; --amber-ink:#1A1200; --red:#FF6B6B; --green:#7EE0A6; --night:#C4A6FF;
+  --sans:"Inter Tight",system-ui,-apple-system,sans-serif;
+  --serif:"Fraunces",Georgia,serif;
+  --mark:"Space Grotesk",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.4;-webkit-text-size-adjust:100%}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.app{max-width:1180px;margin:0 auto;padding:14px 16px calc(28px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;padding:6px 0 12px;border-bottom:1px solid var(--line)}
+.mark{font-family:var(--mark);font-weight:700;font-size:26px;letter-spacing:-.03em;color:var(--blue)}
+.mark span{color:var(--text)}
+.sub{color:var(--muted);font-size:14px}
+.sub a{color:var(--blue);text-underline-offset:3px;margin-left:8px;white-space:nowrap}
+.hd-sync{display:flex;flex-direction:column;align-items:flex-end;gap:6px;margin-left:auto}
+@media(max-width:600px){.hd-sync{align-items:flex-start;margin-left:0;width:100%}}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:0 13px;min-height:40px;font-size:13px;color:var(--muted)}
+.chips button[aria-pressed="true"]{color:var(--text);border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.sync{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.sync[hidden]{display:none}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.dot.live{background:var(--green)} .dot.warn{background:var(--amber)} .dot.err{background:var(--red)}
+.grid{display:grid;gap:0 28px}
+.grid>div{min-width:0}
+@media(min-width:900px){.grid{grid-template-columns:400px minmax(0,1fr);align-items:start}}
+section{padding:16px 0;border-bottom:1px solid var(--line)}
+h2{font-family:var(--serif);font-weight:500;font-size:20px;margin:0 0 10px;letter-spacing:-.01em;font-variation-settings:"opsz" 48}
+.shift-name{font-family:var(--serif);font-weight:500;font-size:22px;font-variation-settings:"opsz" 72;letter-spacing:-.01em}
+.clock{display:flex;align-items:baseline;gap:12px;margin-top:8px;flex-wrap:wrap}
+.clock .t{font-family:var(--serif);font-size:40px;font-weight:500;font-variation-settings:"opsz" 144;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
+.ore{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:6px;margin-bottom:12px}
+.ore button{min-height:48px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-weight:500;font-size:14px;padding:0 4px;color:var(--muted)}
+.ore button[aria-pressed="true"]{color:var(--ore);border-color:var(--ore);box-shadow:inset 0 0 0 1px var(--ore)}
+.side-h{font-family:var(--mark);font-weight:700;letter-spacing:.02em;text-transform:uppercase;font-size:12px;color:var(--muted);margin:12px 0 6px}
+.tap{width:100%;min-height:112px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px;transition:transform .08s ease,background .15s ease;text-align:center}
+.tap:active{transform:scale(.985)}
+.tap.in{background:var(--amber);color:var(--amber-ink)}
+.tap.out{background:var(--blue);color:#06212E}
+.tap.logged{background:var(--green);color:#06212E}
+.tap:disabled{background:var(--surface);color:var(--muted);border:1px dashed var(--line);cursor:not-allowed}
+.tap .m{font-family:var(--mark);font-weight:700;font-size:26px;letter-spacing:-.02em;line-height:1.05}
+.tap .s{font-size:13px;opacity:.85;font-variant-numeric:tabular-nums}
+.outs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;color:var(--muted);font-size:14px}
+.meta b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+.link{color:var(--blue);text-decoration:underline;text-underline-offset:3px;min-height:44px;padding:0 4px}
+.link:disabled{opacity:.35;cursor:not-allowed}
+.note{color:var(--muted);font-size:13px;margin-top:8px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:16px 18px}
+.stat{min-width:0}
+.stat .v{font-family:var(--serif);font-weight:500;font-size:28px;font-variation-settings:"opsz" 144;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.05}
+.stat.big .v{font-size:46px}
+.stat .l{color:var(--muted);font-size:13px;margin-top:4px}
+.stat.warn .v{color:var(--amber)}
+.m-set{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr) 62px;gap:8px;align-items:end;margin-top:10px}
+.m-set .n{font-size:14px;align-self:center;padding-top:18px}
+.m-set label{display:block;font-size:12px;color:var(--muted)}
+.m-set input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:4px;font-variant-numeric:tabular-nums;min-height:44px}
+.m-set input.need{border-color:var(--amber)}
+.m-set .per{text-align:right;font-variant-numeric:tabular-nums;padding:0 0 12px;font-size:14px}
+input:disabled{opacity:.5;cursor:not-allowed}
+.chart{margin:4px 0 20px}
+.chart h3{font-size:14px;font-weight:500;color:var(--muted);margin:0 0 6px}
+.chart svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:16px;font-size:13px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+svg .tips rect{fill:transparent;cursor:crosshair}
+svg .tips rect:hover,svg .tips rect.on{fill:rgba(232,238,244,.07)}
+.charttip{position:fixed;z-index:40;pointer-events:none;background:#0B1117;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;line-height:1.45;color:var(--muted);white-space:pre;box-shadow:0 8px 22px rgba(0,0,0,.45);font-variant-numeric:tabular-nums;max-width:calc(100vw - 24px)}
+.charttip b{color:var(--text);font-weight:600}
+.charttip[hidden]{display:none}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:13px;padding:6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 6px;border-bottom:1px solid var(--line);font-size:14px;white-space:nowrap}
+td.r,th.r{text-align:right}
+tfoot td{font-weight:600}
+tr.edit td{cursor:pointer}
+tr.edit:hover td{background:var(--surface)}
+.empty{color:var(--muted);padding:14px 0}
+.tag{font-size:12px;color:var(--muted)}
+.tag.in{color:var(--amber)} .tag.out{color:var(--blue)}
+.histbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:2px 0 14px}
+.histbar label{color:var(--muted);font-size:13px}
+.histbar input{flex:0 1 160px;min-width:140px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-weight:500;min-height:44px}
+.btn.primary{background:var(--blue);color:#06212E;border-color:var(--blue)}
+.btn.danger{color:var(--red);border-color:#4A2A2A}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.modal{position:fixed;inset:0;z-index:20;background:rgba(5,9,13,.74);display:flex;align-items:center;justify-content:center;padding:16px}
+.modal[hidden]{display:none}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;width:100%;max-width:400px;max-height:88vh;overflow:auto}
+.sheet .f{margin-bottom:12px}
+.sheet label,.sheet .lab{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+.sheet input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font-variant-numeric:tabular-nums;min-height:44px}
+.sheet .ore{grid-template-columns:repeat(2,1fr)}
+.sheet .picks{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.sheet .picks button{min-height:44px;border-radius:8px;background:var(--bg);border:1px solid var(--line);color:var(--muted);font-size:14px}
+.sheet .picks button[aria-pressed="true"]{color:var(--text);border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.sheet .err{color:var(--red);font-size:14px;margin:0 0 10px}
+.sheet .err:empty{display:none}
+.sheet .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sheet .chipset{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:6px}
+.sheet .chipset button{min-height:44px;border-radius:8px;background:var(--bg);border:1px solid var(--line);color:var(--muted);font-size:14px;padding:0 4px}
+.sheet .chipset button[aria-pressed="true"]{color:var(--text);border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.add-down{width:100%;margin-top:12px;min-height:52px;border-color:var(--amber);color:var(--amber)}
+.sub-h{font-size:14px;font-weight:500;color:var(--muted);margin:14px 0 6px}
+body[data-role="viewer"] .writer{display:none}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div>
+    <div class="mark">Tip<span>M8</span></div>
+    <div class="sub">Mobile crusher<a href="index.html">ROM pad and COS</a></div>
+  </div>
+  <div class="hd-sync">
+    <div class="chips" id="roleChips" role="group" aria-label="Device role"></div>
+    <div class="sync"><i class="dot" id="syncDot"></i><span id="syncNote">Connecting…</span></div>
+    <div class="sync" id="tzNote" hidden><i class="dot warn"></i><span id="tzText"></span></div>
+  </div>
+</header>
+
+<div class="grid">
+<div class="col-a">
+
+  <section>
+    <div class="shift-name" id="shiftName">—</div>
+    <div class="clock"><span class="t" id="elapsed">00:00:00</span><span class="sub" id="shiftStatus"></span></div>
+  </section>
+
+  <section class="writer">
+    <div class="ore" id="oreSel" role="group" aria-label="Ore source"></div>
+    <div class="side-h">Into the crusher</div>
+    <button class="tap in" id="tap-excavator" data-m="excavator"><span class="m">Excavator bucket</span><span class="s"></span></button>
+    <div class="side-h">Out of the crusher</div>
+    <div class="outs">
+      <button class="tap out" id="tap-loader" data-m="loader"><span class="m">Loader bucket</span><span class="s"></span></button>
+      <button class="tap out" id="tap-truck" data-m="truck"><span class="m">Truck load</span><span class="s"></span></button>
+    </div>
+    <div class="meta">
+      <span>Last tap <b id="sinceLast">—</b></span>
+      <button class="link" id="undoBtn">Undo last tap</button>
+    </div>
+    <div class="note">Count each load out once. If the loader is filling a truck, tap Truck load only.</div>
+    <button class="btn add-down writer" id="addDown" type="button">Add downtime</button>
+  </section>
+
+  <section>
+    <div class="stats">
+      <div class="stat big"><div class="v" id="inT">0</div><div class="l">tonnes in</div></div>
+      <div class="stat big"><div class="v" id="outT">0</div><div class="l">tonnes out</div></div>
+      <div class="stat" id="diffBox"><div class="v" id="diffT">—</div><div class="l">in less out, t</div></div>
+      <div class="stat"><div class="v" id="ratio">—</div><div class="l">out as % of in</div></div>
+      <div class="stat"><div class="v" id="in30">—</div><div class="l">t/h in, last 30 min</div></div>
+      <div class="stat"><div class="v" id="out30">—</div><div class="l">t/h out, last 30 min</div></div>
+      <div class="stat"><div class="v" id="inAvg">—</div><div class="l">t/h in, shift average</div></div>
+      <div class="stat"><div class="v" id="outAvg">—</div><div class="l">t/h out, shift average</div></div>
+      <div class="stat"><div class="v" id="downT">—</div><div class="l">downtime entered</div></div>
+      <div class="stat"><div class="v" id="avail">—</div><div class="l">of shift so far, not down</div></div>
+      <div class="stat"><div class="v" id="inRun">—</div><div class="l">t/h in, excluding downtime</div></div>
+      <div class="stat"><div class="v" id="outRun">—</div><div class="l">t/h out, excluding downtime</div></div>
+      <div class="stat"><div class="v" id="nExc">0</div><div class="l">excavator buckets</div></div>
+      <div class="stat"><div class="v" id="nLdr">0</div><div class="l">loader buckets</div></div>
+      <div class="stat"><div class="v" id="nTrk">0</div><div class="l">truck loads</div></div>
+    </div>
+    <div class="note" id="balNote"></div>
+  </section>
+
+  <section>
+    <h2>Tonnes per tap</h2>
+    <div id="mSet"></div>
+    <div class="note">Capacity in tonnes × fill factor. A change applies to the next tap. Taps already logged keep their tonnes.</div>
+  </section>
+
+</div>
+<div class="col-b">
+
+  <section>
+    <h2>In and out by ore</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Ore source</th><th class="r">Buckets in</th><th class="r">t in</th><th class="r">Loader</th><th class="r">Truck</th><th class="r">t out</th><th class="r">In less out</th></tr></thead>
+      <tbody id="oreBody"></tbody>
+      <tfoot id="oreFoot"></tfoot>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Downtime</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Reason</th><th class="r">Stops</th><th class="r">Time down</th><th class="r">Share</th></tr></thead>
+      <tbody id="downReasons"></tbody>
+    </table></div>
+    <div class="sub-h">Stops in the last 7 days</div>
+    <div class="tbl"><table>
+      <thead><tr><th>Shift</th><th>Start</th><th>Restart</th><th class="r">Length</th><th>Reason</th><th>Note</th></tr></thead>
+      <tbody id="downBody"></tbody>
+    </table></div>
+    <div class="note writer">Tap a row to correct or delete it.</div>
+  </section>
+
+  <section>
+    <h2>Trends this shift</h2>
+    <div class="chart"><h3>Tonnes by hour</h3><div id="c-hour"></div>
+      <div class="legend"><span><i style="background:var(--amber)"></i>in</span><span><i style="background:var(--blue)"></i>out</span></div></div>
+    <div class="chart"><h3>Running total</h3><div id="c-cum"></div>
+      <div class="legend"><span><i style="background:var(--amber)"></i>in</span><span><i style="background:var(--blue)"></i>out</span><span><i style="background:var(--red);opacity:.35"></i>downtime</span></div></div>
+  </section>
+
+  <section>
+    <h2>Tap log</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>#</th><th>Time</th><th>Side</th><th>Machine</th><th>Ore</th><th class="r">t</th></tr></thead>
+      <tbody id="logBody"></tbody>
+    </table></div>
+    <div class="note writer">Tap a row to correct its time, machine, ore or tonnes.</div>
+  </section>
+
+  <section>
+    <h2>Previous shifts</h2>
+    <div class="histbar">
+      <label for="histFrom">From</label><input type="date" id="histFrom">
+      <label for="histTo">To</label><input type="date" id="histTo">
+      <button class="link" id="histClear" type="button">Clear dates</button>
+      <button class="link" id="histCsv" type="button">Export these shifts</button>
+      <button class="link" id="histAllCsv" type="button">Export every tap</button>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th>Shift</th><th>Date</th><th class="r">Buckets in</th><th class="r">t in</th><th class="r">Loader</th><th class="r">Truck</th><th class="r">t out</th><th class="r">In less out</th><th class="r">Out %</th><th class="r">Down</th><th></th></tr></thead>
+      <tbody id="histBody"></tbody>
+    </table></div>
+  </section>
+
+</div>
+</div>
+
+<div class="modal" id="editModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <h2 id="editTitle">Edit tap</h2>
+    <div class="f"><label for="eTime">Time logged, site time</label><input id="eTime" type="time" step="1"></div>
+    <div class="f"><div class="lab">Machine</div><div class="picks" id="eMachine" role="group" aria-label="Machine"></div></div>
+    <div class="f"><label for="eTonnes">Tonnes</label><input id="eTonnes" type="number" inputmode="decimal" step="0.1" min="0" max="1000"></div>
+    <div class="f"><div class="lab">Ore source</div><div class="ore" id="eOre" role="group" aria-label="Ore source"></div></div>
+    <div class="actions">
+      <button class="btn primary" id="eSave">Save</button>
+      <button class="btn" id="eCancel">Cancel</button>
+      <button class="btn danger" id="eDel">Delete tap</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="modal" id="downModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="downTitle">
+    <h2 id="downTitle">Add downtime</h2>
+    <div class="f"><label for="dDate">Date it stopped</label><input id="dDate" type="date"></div>
+    <div class="two f">
+      <div><label for="dStart">Start, site time</label><input id="dStart" type="time"></div>
+      <div><label for="dEnd">Restart, site time</label><input id="dEnd" type="time"></div>
+    </div>
+    <div class="f"><div class="lab">Reason</div><div class="chipset" id="dReasons" role="group" aria-label="Reason"></div></div>
+    <div class="f"><label for="dNote">Note</label><input id="dNote" type="text" maxlength="200" autocomplete="off" placeholder="Optional, unless the reason is Other"></div>
+    <div class="note" id="dPreview" style="margin:0 0 10px"></div>
+    <div class="err" id="dErr" role="alert"></div>
+    <div class="actions">
+      <button class="btn primary" id="dSave" type="button">Save</button>
+      <button class="btn" id="dCancel" type="button">Cancel</button>
+      <button class="btn danger" id="dDel" type="button" hidden>Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const $$=s=>Array.from(document.querySelectorAll(s));
+
+/* The crusher's own log, kept apart from the ROM pad and COS on purpose: its own storage key on
+   the device and its own tables and functions in the database. See the mobile crusher section of
+   the README. */
+const store=(()=>{let mem={},ok=false;
+  try{localStorage.setItem('__tipm8','1');localStorage.removeItem('__tipm8');ok=true}catch(e){}
+  return{get:k=>{try{return ok?localStorage.getItem(k):(k in mem?mem[k]:null)}catch(e){return k in mem?mem[k]:null}},
+         set:(k,v)=>{try{if(ok)localStorage.setItem(k,v);else mem[k]=v}catch(e){mem[k]=v}}};
+})();
+
+const KEY='tipm8.crusher.v1', ROLE_KEY='tipm8.crusher.role';
+const SB={url:'https://wwrhpkkqgpasiemepghu.supabase.co',key:'sb_publishable_La-Jaq3Eyd4wBPVGCqz2qw_lRs5yukb'};
+const LOG_PIN='1234';   /* the same code as the ROM pad and COS; see LOG_PIN in index.html */
+/* The site ore colour standard, as in index.html. Scats do not go through the crusher. */
+const ORES=[{k:'Kopra',c:'#AC5E56'},{k:'Toka',c:'#1D8348'},{k:'Marawuwung',c:'#AE862B'},{k:'Araren',c:'#0E9BD0'},{k:'Alaskar',c:'#D9782E'}];
+const oreColor=k=>(ORES.find(o=>o.k===k)||{c:'#8A9BAE'}).c;
+const MACHINES={excavator:{label:'Excavator bucket',short:'Excavator',side:'in',per:'bucket'},
+                loader:{label:'Loader bucket',short:'Loader',side:'out',per:'bucket'},
+                truck:{label:'Truck load',short:'Truck',side:'out',per:'load'}};
+const MKEYS=Object.keys(MACHINES);
+const sideOf=m=>(MACHINES[m]||{}).side;
+/* The site's old delay list with Excavator down and No feed added, which only the crusher has. */
+const REASONS=['Crusher','Screen','Excavator down','Loader down','No trucks','No feed','Blast','Weather','Shift change','Meal','Other'];
+
+/* Capacities start blank rather than at a guess: a made-up bucket size would produce tonnes that
+   look real. A machine's button stays off until its capacity and fill are entered. */
+const blankMachines=()=>({excavator:{cap:null,fill:null},loader:{cap:null,fill:null},truck:{cap:null,fill:null}});
+const blankShift=()=>({key:null,startedAt:null});
+let S=(()=>{
+  const d={shift:blankShift(),machines:blankMachines(),ore:ORES[0].k,taps:[],outbox:{},down:[],downOut:{}};
+  try{const o=JSON.parse(store.get(KEY)||'null');
+    if(o)return{shift:{...d.shift,...(o.shift||{})},machines:{...d.machines,...(o.machines||{})},
+      ore:ORES.some(x=>x.k===o.ore)?o.ore:d.ore,taps:o.taps||[],outbox:o.outbox||{},down:o.down||[],downOut:o.downOut||{}}}catch(e){}
+  return d})();
+const persist=()=>store.set(KEY,JSON.stringify(S));
+
+/* ---- Site time: the same rules as index.html. Nothing here reads the device's own zone. ---- */
+const pad=n=>String(n).padStart(2,'0');
+const SITE_OFFSET_MIN=8*60, SITE_LABEL='WITA', HOUR=3600000;
+const SHIFT_START_MIN=6*60+30, SHIFT_SPAN_MIN=720, SHIFT_MS=12*HOUR;
+const now=()=>Date.now();
+const sd=t=>new Date((t==null?now():t)+SITE_OFFSET_MIN*60000);
+const sEpoch=(y,mo,d,h,mi,sec)=>Date.UTC(y,mo,d,h||0,mi||0,sec||0)-SITE_OFFSET_MIN*60000;
+const sMins=t=>{const d=sd(t);return d.getUTCHours()*60+d.getUTCMinutes()};
+const ymd=t=>{const d=sd(t);return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate())};
+const dOf=str=>{const [y,m,d]=String(str).split('-').map(Number);return sEpoch(y,m-1,d,0,0,0)};
+function shiftKey(t){
+  const at=t==null?now():t, m=sMins(at);
+  if(m>=SHIFT_START_MIN&&m<SHIFT_START_MIN+SHIFT_SPAN_MIN)return{date:ymd(at),name:'Day'};
+  if(m>=SHIFT_START_MIN+SHIFT_SPAN_MIN)return{date:ymd(at),name:'Night'};
+  return{date:ymd(at-86400000),name:'Night'};
+}
+function shiftStart(t){
+  const inst=t==null?now():t, m=sMins(inst), d=sd(inst), Y=d.getUTCFullYear(), M=d.getUTCMonth(), D=d.getUTCDate();
+  const at=(mins,back)=>sEpoch(Y,M,D-(back?1:0),Math.floor(mins/60),mins%60,0);
+  if(m>=SHIFT_START_MIN+SHIFT_SPAN_MIN)return at(SHIFT_START_MIN+SHIFT_SPAN_MIN,false);
+  if(m>=SHIFT_START_MIN)return at(SHIFT_START_MIN,false);
+  return at(SHIFT_START_MIN+SHIFT_SPAN_MIN,true);
+}
+const sameKey=(a,b)=>!!a&&!!b&&a.date===b.date&&a.name===b.name;
+const mkey=k=>k.date+'|'+k.name;
+const fmtClock=ms=>{ms=Math.max(0,ms||0);const s=Math.floor(ms/1000);return pad(Math.floor(s/3600))+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60)};
+const fmtDur=ms=>{if(ms==null||!isFinite(ms))return'—';const s=Math.round(ms/1000);if(s<60)return s+'s';const m=Math.floor(s/60);if(m<60)return m+'m '+pad(s%60)+'s';return Math.floor(m/60)+'h '+pad(m%60)+'m'};
+const fmtTime=t=>{const d=sd(t);return pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())+':'+pad(d.getUTCSeconds())};
+const fmtHM=t=>{const d=sd(t);return pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())};
+const fmtDate=t=>sd(t).toLocaleDateString(undefined,{day:'numeric',month:'short',timeZone:'UTC'});
+const fmtT=v=>Math.round(v||0).toLocaleString();
+const n0=v=>(v==null||!isFinite(v))?'—':Math.round(v).toLocaleString();
+const signed=v=>v==null?'—':Math.abs(v)<0.5?'0':(v>0?'+':'−')+fmtT(Math.abs(v));
+const pct=(a,b)=>b>0?Math.round(a/b*100)+'%':'—';
+const fmtMin=ms=>{const m=Math.round(ms/60000);return m<60?m+' min':Math.floor(m/60)+'h '+pad(m%60)+'m'};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const iso=t=>t?new Date(t).toISOString():null;
+const uid=()=>(self.crypto&&crypto.randomUUID)?crypto.randomUUID()
+  :'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c==='x'?r:(r&3|8)).toString(16)});
+function deviceName(){let n=store.get('tipm8.device');if(!n){n='dev-'+uid().slice(0,8);store.set('tipm8.device',n)}return n}
+
+/* ---- Roles ---- A fresh device watches. Logging is a deliberate act behind the passcode. */
+let role=store.get(ROLE_KEY)==='logger'?'logger':'viewer';
+const logging=()=>role==='logger';
+function setRole(r){
+  if(r===role)return;
+  if(r==='logger'){
+    const v=prompt('Passcode to log the mobile crusher:');
+    if(v==null)return;
+    if(String(v).trim()!==LOG_PIN){alert('Wrong passcode. Nothing changed. This device is still Watching.');return}
+  }
+  role=r;store.set(ROLE_KEY,r);document.body.dataset.role=r;
+  startPolling();pull();renderAll();
+}
+
+/* ---- Sync -------------------------------------------------------------------------------
+   Writes land on the device first and the outbox is persisted, so a dropped signal or a closed
+   app costs lag rather than taps. There is one entry per shift, holding this device's whole copy
+   of it, and an entry stays until the database has taken it. */
+const rpc=(fn,body)=>fetch(SB.url+'/rest/v1/rpc/'+fn,{method:'POST',
+  headers:{'apikey':SB.key,'Authorization':'Bearer '+SB.key,'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+let pushTimer=null, pushing=false, lastPush=null, lastPull=null, syncErr=null, dbMissing=false;
+const num=v=>{const n=parseFloat(v);return isFinite(n)?n:null};
+const ready=m=>{const c=S.machines[m];return !!c&&c.cap>0&&c.fill>0};
+const perTap=m=>ready(m)?Math.round(S.machines[m].cap*S.machines[m].fill*100)/100:null;
+function snapshot(){
+  const machines={};MKEYS.forEach(m=>{if(ready(m))machines[m]=S.machines[m]});
+  return{p_date:S.shift.key.date,p_name:S.shift.key.name,p_device:deviceName(),p_started_at:iso(S.shift.startedAt),
+    p_machines:machines,p_taps:S.taps.map(t=>({id:t.id,logged_at:iso(t.t),machine:t.m,ore:t.ore||'',tonnes:t.tonnes}))};
+}
+function save(){
+  if(S.shift.key)S.outbox[mkey(S.shift.key)]=snapshot();
+  persist();schedulePush(1000);renderSync();
+}
+function schedulePush(ms){clearTimeout(pushTimer);pushTimer=setTimeout(drain,ms)}
+const queuedN=()=>Object.keys(S.outbox).length+Object.keys(S.downOut).length;
+/* Downtime has its own outbox and its own call, so a stop can be entered for any recent shift,
+   not only the one on the deck, and a problem here can never hold up the taps. */
+let downTimer=null, downBusy=false;
+function scheduleDown(ms){clearTimeout(downTimer);downTimer=setTimeout(drainDown,ms)}
+async function drainDown(){
+  if(downBusy)return;
+  const entries=Object.values(S.downOut);
+  if(!entries.length)return;
+  downBusy=true;
+  const groups={};
+  entries.forEach(x=>{(groups[mkey(x.shift)]=groups[mkey(x.shift)]||[]).push(x)});
+  for(const list of Object.values(groups)){
+    const k=list[0].shift;
+    try{
+      const r=await rpc('crusher_downtime_sync',{p_date:k.date,p_name:k.name,p_device:deviceName(),
+        p_started_at:iso(shiftStart(list[0].a)),
+        p_rows:list.map(x=>({id:x.id,started_at:iso(x.a),ended_at:iso(x.b),reason:x.reason,note:x.note||'',deleted:!!x.deleted}))});
+      if(r.status===404){dbMissing=true;syncErr=null;break}
+      if(!r.ok)throw new Error('the log refused it (HTTP '+r.status+')');
+      dbMissing=false;syncErr=null;lastPush=now();
+      list.forEach(x=>{if(S.downOut[x.id]===x)delete S.downOut[x.id]});
+    }catch(e){syncErr=e.message||'no connection';break}
+  }
+  downBusy=false;persist();renderSync();
+  if(Object.keys(S.downOut).length)scheduleDown(dbMissing?120000:syncErr?15000:1000);
+  else pullDown().then(renderAll);
+}
+const DOWN_DAYS=7;
+async function pullDown(){
+  const to=shiftKey().date, from=ymd(dOf(to)-DOWN_DAYS*86400000);
+  try{
+    const r=await rpc('crusher_downtime_range',{p_from:from,p_to:to});
+    if(!r.ok)return;
+    const d=await r.json();
+    S.down=(Array.isArray(d)?d:[]).map(x=>({id:x.id,shift:{date:x.shift_date,name:x.shift_name},
+      a:Date.parse(x.started_at),b:Date.parse(x.ended_at),reason:x.reason,note:x.note||''}));
+    persist();
+  }catch(e){}
+}
+/* What the log holds, with this device's unsent changes laid over it. Newest first. */
+function downRows(){
+  return S.down.filter(r=>!(r.id in S.downOut)).concat(Object.values(S.downOut).filter(x=>!x.deleted)).sort((x,y)=>y.a-x.a);
+}
+const downFor=key=>downRows().filter(r=>sameKey(r.shift,key));
+
+async function drain(){
+  if(pushing)return;
+  const ids=Object.keys(S.outbox);
+  if(!ids.length)return;
+  pushing=true;renderSync();
+  for(const id of ids){
+    const snap=S.outbox[id];
+    try{
+      const r=await rpc('crusher_sync',snap);
+      if(r.status===404){dbMissing=true;syncErr=null;break}
+      if(!r.ok)throw new Error('the log refused it (HTTP '+r.status+')');
+      dbMissing=false;syncErr=null;lastPush=now();
+      if(S.outbox[id]===snap)delete S.outbox[id];
+    }catch(e){syncErr=e.message||'no connection';break}
+  }
+  pushing=false;persist();renderSync();
+  if(Object.keys(S.outbox).length)schedulePush(dbMissing?120000:syncErr?15000:1000);
+}
+
+let remote={key:null,start:null,taps:[],machines:{}};
+let pollTimer=null;
+function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(()=>{if(!document.hidden)pull()},logging()?20000:8000)}
+async function pull(){
+  try{
+    const r=await rpc('crusher_active');
+    if(r.status===404){dbMissing=true;renderAll();return}
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json(), sh=d&&d.shift;
+    dbMissing=false;
+    remote=sh?{key:{date:sh.shift_date,name:sh.shift_name},start:Date.parse(sh.started_at),machines:sh.machines||{},
+      taps:(d.taps||[]).map(t=>({id:t.id,t:Date.parse(t.logged_at),m:t.machine,ore:t.ore,tonnes:+t.tonnes||0,device:t.device}))}
+      :{key:null,start:null,taps:[],machines:{}};
+    /* A replacement device takes the bucket sizes it has none for, rather than asking again. */
+    let got=false;
+    MKEYS.forEach(m=>{const c=remote.machines[m];if(!ready(m)&&c&&c.cap>0&&c.fill>0){S.machines[m]={cap:+c.cap,fill:+c.fill};got=true}});
+    if(got)persist();
+    lastPull=now();if(!queuedN())syncErr=null;
+    await pullDown();
+    renderAll();pullHistory();
+  }catch(e){syncErr=e.message||'no connection';renderSync()}
+}
+
+/* What the screen shows. A logging device shows its own log plus anything another device logged
+   on the same shift, so a replacement pad still totals the whole shift. Rows from another device
+   are read only here, and the server would refuse to let this device overwrite them anyway. */
+function view(){
+  if(!logging())return{key:remote.key,start:remote.start,taps:remote.taps};
+  const key=S.shift.key||shiftKey(), me=deviceName();
+  const others=sameKey(remote.key,key)?remote.taps.filter(t=>t.device!==me):[];
+  const taps=S.taps.map(t=>({...t,mine:true})).concat(others).sort((a,b)=>a.t-b.t);
+  const stops=downFor(key);
+  return{key,start:S.shift.startedAt||(taps.length?shiftStart(taps[0].t):stops.length?shiftStart(stops[0].a):null),taps};
+}
+function stats(v){
+  const sum=a=>a.reduce((x,t)=>x+t.tonnes,0);
+  const by=m=>v.taps.filter(t=>t.m===m);
+  const exc=by('excavator'), ldr=by('loader'), trk=by('truck');
+  const inT=sum(exc), outT=sum(ldr)+sum(trk);
+  const nowT=now(), end=v.start?Math.min(nowT,v.start+SHIFT_MS):nowT, elapsed=v.start?Math.max(0,end-v.start):0, hrs=elapsed/HOUR;
+  const running=!!v.start&&nowT<v.start+SHIFT_MS;
+  const win=Math.min(30*60000,elapsed), cut=end-win;
+  const rate=side=>running&&elapsed>=5*60000
+    ?sum(v.taps.filter(t=>sideOf(t.m)===side&&t.t>=cut))/(win/HOUR):null;
+  const down=Math.min(elapsed,downFor(v.key).reduce((x,r)=>x+Math.max(0,Math.min(r.b,end)-Math.max(r.a,v.start||r.a)),0));
+  const run=elapsed-down, rh=run/HOUR;
+  return{down,avail:elapsed>=60000?run/elapsed:null,inRun:run>=60000?inT/rh:null,outRun:run>=60000?outT/rh:null,
+    exc:exc.length,ldr:ldr.length,trk:trk.length,ldrT:sum(ldr),trkT:sum(trk),inT,outT,diff:v.taps.length?inT-outT:null,
+    elapsed,running,in30:rate('in'),out30:rate('out'),
+    inAvg:hrs>=1/60?inT/hrs:null,outAvg:hrs>=1/60?outT/hrs:null,
+    last:v.taps.length?v.taps[v.taps.length-1].t:null};
+}
+
+/* ---- Rendering ---- */
+function renderOre(){
+  $('#oreSel').innerHTML=ORES.map(o=>`<button type="button" data-ore="${o.k}" style="--ore:${o.c}" aria-pressed="${S.ore===o.k}">${o.k}</button>`).join('');
+}
+const flashing={};
+function renderTaps(){
+  MKEYS.forEach(m=>{
+    if(flashing[m])return;
+    const b=$('#tap-'+m), ok=ready(m);
+    b.disabled=!ok;
+    const c=S.machines[m];
+    b.querySelector('.s').textContent=ok?`${S.ore}, ${c.cap} t × ${c.fill} = ${perTap(m).toFixed(1)} t`:'Set capacity and fill below';
+  });
+  $('#undoBtn').disabled=!S.taps.length;
+}
+function renderSettings(){
+  const box=$('#mSet'), active=document.activeElement;
+  if(box.contains(active)&&active.tagName==='INPUT'){ /* never rebuild a field someone is typing in */
+    MKEYS.forEach(m=>{const e=$('#per-'+m);if(e)e.textContent=ready(m)?perTap(m).toFixed(1)+' t':'—'});return}
+  const src=m=>logging()?S.machines[m]:(remote.machines[m]||{cap:null,fill:null});
+  box.innerHTML=MKEYS.map(m=>{const c=src(m), dis=logging()?'':' disabled';
+    const need=f=>logging()&&!(f>0)?' class="need"':'';
+    const per=c.cap>0&&c.fill>0?(Math.round(c.cap*c.fill*100)/100).toFixed(1)+' t':'—';
+    return `<div class="m-set"><div class="n">${MACHINES[m].short}</div>`
+      +`<div><label for="cap-${m}">Capacity, t</label><input id="cap-${m}" data-m="${m}" data-f="cap" type="number" inputmode="decimal" step="0.5" min="0.1" max="500" value="${c.cap==null?'':c.cap}"${need(c.cap)}${dis}></div>`
+      +`<div><label for="fill-${m}">Fill</label><input id="fill-${m}" data-m="${m}" data-f="fill" type="number" inputmode="decimal" step="0.01" min="0.1" max="1.5" value="${c.fill==null?'':c.fill}"${need(c.fill)}${dis}></div>`
+      +`<div class="per" id="per-${m}">${per}</div></div>`}).join('');
+}
+function renderClock(){
+  const v=view(), st=stats(v), cur=shiftKey();
+  $('#shiftName').textContent=v.key?v.key.name+' shift, '+fmtDate(dOf(v.key.date)):'No shift logged yet';
+  $('#elapsed').textContent=fmtClock(st.elapsed);
+  $('#shiftStatus').textContent=!v.start?(logging()?'Clock starts on the first tap, from the changeover':'Waiting for the first tap')
+    :!sameKey(v.key,cur)?'Last shift logged. Nothing logged yet this shift.'
+    :'Started '+fmtHM(v.start);
+  $('#sinceLast').textContent=st.last==null?'—':fmtDur(Math.max(0,now()-st.last))+' ago';
+}
+function renderStats(){
+  const v=view(), st=stats(v);
+  $('#inT').textContent=fmtT(st.inT);$('#outT').textContent=fmtT(st.outT);
+  $('#diffT').textContent=signed(st.diff);$('#ratio').textContent=pct(st.outT,st.inT);
+  $('#in30').textContent=n0(st.in30);$('#out30').textContent=n0(st.out30);
+  $('#inAvg').textContent=n0(st.inAvg);$('#outAvg').textContent=n0(st.outAvg);
+  $('#downT').textContent=st.down>0?fmtMin(st.down):'0 min';
+  $('#avail').textContent=st.avail==null?'—':Math.round(st.avail*100)+'%';
+  $('#inRun').textContent=n0(st.inRun);$('#outRun').textContent=n0(st.outRun);
+  $('#nExc').textContent=st.exc;$('#nLdr').textContent=st.ldr;$('#nTrk').textContent=st.trk;
+  $('#diffBox').classList.toggle('warn',st.diff!=null&&st.diff<-0.5);
+  $('#balNote').textContent=st.diff==null?''
+    :st.diff<-0.5?'More has been counted out than in. Check the capacity and fill figures, or whether output came from material already crushed.'
+    :'In less out is material still in the crusher or on its discharge pile, plus the error in counting by the bucket.';
+}
+function renderBreakdown(){
+  const v=view(), oreKeys=ORES.map(o=>o.k).concat([...new Set(v.taps.map(t=>t.ore))].filter(k=>k&&!ORES.some(o=>o.k===k)));
+  const row=(rows)=>{const of=m=>rows.filter(t=>t.m===m), sum=a=>a.reduce((x,t)=>x+t.tonnes,0);
+    return{n:of('excavator').length,i:sum(of('excavator')),l:of('loader').length,tr:of('truck').length,o:sum(of('loader'))+sum(of('truck'))}};
+  const cells=r=>`<td class="r">${r.n}</td><td class="r">${fmtT(r.i)}</td><td class="r">${r.l}</td><td class="r">${r.tr}</td><td class="r">${fmtT(r.o)}</td><td class="r">${signed(r.i-r.o)}</td>`;
+  const lines=oreKeys.map(k=>({k,r:row(v.taps.filter(t=>t.ore===k))})).filter(x=>x.r.n||x.r.l||x.r.tr);
+  $('#oreBody').innerHTML=lines.length?lines.map(x=>`<tr><td><span style="color:${oreColor(x.k)}">${esc(x.k)}</span></td>${cells(x.r)}</tr>`).join('')
+    :'<tr><td colspan="7" class="empty">Nothing logged this shift.</td></tr>';
+  $('#oreFoot').innerHTML=lines.length>1?`<tr><td>Total</td>${cells(row(v.taps))}</tr>`:'';
+}
+/* Charts: plain SVG, one invisible column per hour or point carrying its values, as in index.html. */
+const W=640,H=230,PL=46,PR=12,PT=12,PB=26,IW=W-PL-PR,IH=H-PT-PB;
+const svgOpen=()=>`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img">`;
+const emptyMsg=m=>`<div class="empty">${m}</div>`;
+function niceMax(v,n=4){if(!(v>0))return{max:n,step:1};const raw=v/n,mag=Math.pow(10,Math.floor(Math.log10(raw))),r=raw/mag;const step=(r<=1?1:r<=2?2:r<=5?5:10)*mag;return{max:Math.ceil(v/step)*step,step}}
+function yGrid(max,step){let s='';for(let v=0;v<=max+1e-9;v+=step){const y=PT+IH-v/max*IH;s+=`<line x1="${PL}" x2="${W-PR}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${PL-8}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v>=1000?(v/1000)+'k':Math.round(v*10)/10}</text>`}return s}
+const tipCols=cols=>'<g class="tips">'+cols.map(c=>{const x0=Math.max(PL,c.x0),w=Math.max(1,Math.min(W-PR,c.x1)-x0);
+  return `<rect x="${x0.toFixed(1)}" y="${PT}" width="${w.toFixed(1)}" height="${IH}" data-tip="${esc(c.lines.join('\n'))}"/>`}).join('')+'</g>';
+function renderCharts(){
+  const v=view(), hourEl=$('#c-hour'), cumEl=$('#c-cum');
+  if(!v.start||!v.taps.length){hourEl.innerHTML=emptyMsg('Hours fill in after the first tap.');cumEl.innerHTML=emptyMsg('The running total builds here through the shift.');return}
+  /* hours are counted from the changeover */
+  const hours=Array.from({length:12},(_,i)=>({t0:v.start+i*HOUR,i:0,o:0}));
+  v.taps.forEach(t=>{const i=Math.max(0,Math.min(11,Math.floor((t.t-v.start)/HOUR)));if(sideOf(t.m)==='in')hours[i].i+=t.tonnes;else hours[i].o+=t.tonnes});
+  let a=niceMax(Math.max(1,...hours.map(h=>Math.max(h.i,h.o))));
+  let s=svgOpen()+yGrid(a.max,a.step);
+  const bw=IW/12,gap=Math.min(8,bw*.22),w=(bw-gap)/2;
+  hours.forEach((h,i)=>{const X=PL+i*bw+gap/2,ih=h.i/a.max*IH,oh=h.o/a.max*IH;
+    s+=`<rect x="${X.toFixed(1)}" y="${(PT+IH-ih).toFixed(1)}" width="${w.toFixed(1)}" height="${ih.toFixed(1)}" rx="1.5" fill="var(--amber)"/>`
+      +`<rect x="${(X+w).toFixed(1)}" y="${(PT+IH-oh).toFixed(1)}" width="${w.toFixed(1)}" height="${oh.toFixed(1)}" rx="1.5" fill="var(--blue)"/>`;
+    if(i%2===0)s+=`<text x="${(X+w).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${fmtHM(h.t0)}</text>`});
+  s+=tipCols(hours.map((h,i)=>({x0:PL+i*bw,x1:PL+(i+1)*bw,lines:[fmtHM(h.t0)+'–'+fmtHM(h.t0+HOUR),'in '+fmtT(h.i)+' t','out '+fmtT(h.o)+' t','in less out '+signed(h.i-h.o)]})));
+  hourEl.innerHTML=s+'</svg>';
+
+  const end=Math.max(Math.min(now(),v.start+SHIFT_MS),v.taps[v.taps.length-1].t), span=Math.max(60000,end-v.start);
+  const xOf=t=>PL+(Math.max(v.start,t)-v.start)/span*IW;
+  let ci=0,co=0;const pts=[];
+  v.taps.forEach(t=>{if(sideOf(t.m)==='in')ci+=t.tonnes;else co+=t.tonnes;pts.push({t:t.t,ci,co})});
+  a=niceMax(Math.max(1,ci,co));
+  const y=val=>PT+IH-val/a.max*IH;
+  /* drawn as steps: the total only changes at a tap, so a slope would show tonnes nobody counted */
+  const line=(f,col)=>{let d=`M${PL} ${y(0)}`;
+    pts.forEach(p=>{const x=xOf(p.t).toFixed(1);d+=` H${x} V${y(p[f]).toFixed(1)}`});
+    return `<path d="${d} H${xOf(end).toFixed(1)}" fill="none" stroke="${col}" stroke-width="2"/>`};
+  s=svgOpen()+yGrid(a.max,a.step);
+  const stepMs=span<=2*HOUR?30*60000:span<=6*HOUR?HOUR:2*HOUR;
+  for(let t=v.start;t<=end;t+=stepMs)s+=`<text x="${xOf(t).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${fmtHM(t)}</text>`;
+  downFor(v.key).forEach(r=>{const x0=xOf(r.a),x1=xOf(Math.min(r.b,end));
+    if(x1>x0)s+=`<rect x="${x0.toFixed(1)}" y="${PT}" width="${(x1-x0).toFixed(1)}" height="${IH}" fill="var(--red)" opacity=".18"/>`});
+  s+=line('ci','var(--amber)')+line('co','var(--blue)');
+  s+=tipCols(pts.map((p,i)=>{const x=xOf(p.t);return{x0:i?(xOf(pts[i-1].t)+x)/2:PL,x1:i<pts.length-1?(x+xOf(pts[i+1].t))/2:W-PR,
+    lines:[fmtHM(p.t),'in '+fmtT(p.ci)+' t','out '+fmtT(p.co)+' t','in less out '+signed(p.ci-p.co)]}}));
+  cumEl.innerHTML=s+'</svg>';
+}
+const LOG_SHOWN=20;let logAll=false;
+function renderLog(){
+  const v=view(), tb=$('#logBody');
+  if(!v.taps.length){tb.innerHTML='<tr><td colspan="6" class="empty">No taps logged this shift.</td></tr>';return}
+  const all=v.taps.map((t,i)=>({t,n:i+1})).reverse(), folded=!logAll&&all.length>LOG_SHOWN, rows=folded?all.slice(0,LOG_SHOWN):all;
+  const more=folded?`<tr><td colspan="6"><button type="button" class="link" data-logall="1">Show all ${all.length} taps</button></td></tr>`
+    :all.length>LOG_SHOWN?`<tr><td colspan="6"><button type="button" class="link" data-logall="0">Show the last ${LOG_SHOWN} only</button></td></tr>`:'';
+  tb.innerHTML=rows.map(({t,n})=>{const side=sideOf(t.m), edit=logging()&&t.mine;
+    return `<tr class="${edit?'edit':''}"${edit?` data-edit="${esc(t.id)}"`:''}><td>${n}</td><td>${fmtTime(t.t)}</td>`
+      +`<td><span class="tag ${side}">${side==='in'?'In':'Out'}</span></td><td>${esc((MACHINES[t.m]||{}).short||t.m)}${logging()&&!t.mine?' <span class="tag">other device</span>':''}</td>`
+      +`<td><span style="color:${oreColor(t.ore)}">${esc(t.ore||'—')}</span></td><td class="r">${t.tonnes.toFixed(1)}</td></tr>`}).join('')+more;
+}
+
+const DOWN_SHOWN=10;let downAll=false;
+function renderDown(){
+  const v=view(), cur=v.key?downFor(v.key):[], total=cur.reduce((x,r)=>x+(r.b-r.a),0);
+  const by={};cur.forEach(r=>{const b=by[r.reason]||(by[r.reason]={n:0,ms:0});b.n++;b.ms+=r.b-r.a});
+  $('#downReasons').innerHTML=cur.length?Object.keys(by).sort((a,b)=>by[b].ms-by[a].ms).map(k=>
+    `<tr><td>${esc(k)}</td><td class="r">${by[k].n}</td><td class="r">${fmtMin(by[k].ms)}</td><td class="r">${pct(by[k].ms,total)}</td></tr>`).join('')
+    :'<tr><td colspan="4" class="empty">No downtime entered this shift.</td></tr>';
+  const all=downRows(), folded=!downAll&&all.length>DOWN_SHOWN, rows=folded?all.slice(0,DOWN_SHOWN):all;
+  const more=folded?`<tr><td colspan="6"><button type="button" class="link" data-downall="1">Show all ${all.length} stops</button></td></tr>`
+    :all.length>DOWN_SHOWN?`<tr><td colspan="6"><button type="button" class="link" data-downall="0">Show the last ${DOWN_SHOWN} only</button></td></tr>`:'';
+  $('#downBody').innerHTML=all.length?rows.map(r=>`<tr class="${logging()?'edit':''}"${logging()?` data-down="${esc(r.id)}"`:''}>`
+    +`<td>${esc(r.shift.name)} ${fmtDate(dOf(r.shift.date))}</td><td>${fmtHM(r.a)}</td><td>${fmtHM(r.b)}</td><td class="r">${fmtMin(r.b-r.a)}</td>`
+    +`<td>${esc(r.reason)}</td><td>${esc(r.note||'')}</td></tr>`).join('')+more
+    :'<tr><td colspan="6" class="empty">No stops entered.</td></tr>';
+}
+
+/* ---- Previous shifts, from the database, so any device can see them. ---- */
+let histRows=[], histAt=null, histBusy=false, histFrom='', histTo='';
+async function pullHistory(force){
+  if(histBusy||(!force&&histAt&&now()-histAt<60000))return;
+  histBusy=true;
+  try{
+    const b={p_limit:120};if(histFrom)b.p_from=histFrom;if(histTo)b.p_to=histTo;
+    const r=await rpc('crusher_summaries',b);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();histRows=Array.isArray(d)?d:[];histAt=now();renderHist();
+  }catch(e){}finally{histBusy=false}
+}
+const rowOut=x=>(+x.loader_t||0)+(+x.truck_t||0);
+function renderHist(){
+  $('#histBody').innerHTML=histRows.length?histRows.map(x=>{const i=+x.in_t||0,o=rowOut(x),any=+x.in_n||+x.loader_n||+x.truck_n;
+    return `<tr><td>${esc(x.shift_name)}</td><td>${fmtDate(dOf(x.shift_date))}</td><td class="r">${+x.in_n||0}</td><td class="r">${fmtT(i)}</td>`
+      +`<td class="r">${+x.loader_n||0}</td><td class="r">${+x.truck_n||0}</td><td class="r">${fmtT(o)}</td>`
+      +`<td class="r">${any?signed(i-o):'—'}</td><td class="r">${pct(o,i)}</td><td class="r">${+x.down_min>0?fmtMin(+x.down_min*60000):'—'}</td>`
+      +`<td><button type="button" class="link" data-csv="${esc(x.shift_date)}|${esc(x.shift_name)}">CSV</button></td></tr>`}).join('')
+    :`<tr><td colspan="11" class="empty">${histFrom||histTo?'No shifts in that date range.':'Shifts appear here after the first tap has reached the shared log.'}</td></tr>`;
+}
+
+/* ---- Exports. timestamp_iso is the authoritative column. ---- */
+const toCsv=rows=>rows.map(r=>r.map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(',')).join('\n');
+function download(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+const r1=v=>Math.round((+v||0)*10)/10;
+function tapRows(taps){
+  /* running totals restart for each shift, and the in and out sides are never added together */
+  const rows=[['shift_date','shift','timestamp_iso','time_site','side','machine','ore','tonnes','cumulative_in_t','cumulative_out_t','device']];
+  const cum={};
+  taps.forEach(t=>{const k=t.shift_date+'|'+t.shift_name, c=cum[k]||(cum[k]={i:0,o:0}), side=sideOf(t.machine);
+    if(side==='in')c.i+=+t.tonnes||0;else c.o+=+t.tonnes||0;
+    rows.push([t.shift_date,t.shift_name,t.logged_at,fmtTime(Date.parse(t.logged_at)),side,t.machine,t.ore||'',r1(t.tonnes),r1(c.i),r1(c.o),t.device||''])});
+  return rows;
+}
+/* Stops follow the taps in the same file, under their own heading. */
+function downCsv(list){
+  if(!list.length)return[];
+  return[[],['DOWNTIME'],['shift_date','shift','start_iso','start_site','restart_iso','restart_site','minutes','reason','note','device']]
+    .concat(list.map(d=>{const a=Date.parse(d.started_at),b=Date.parse(d.ended_at);
+      return[d.shift_date,d.shift_name,d.started_at,fmtHM(a),d.ended_at,fmtHM(b),Math.round((b-a)/6000)/10,d.reason,d.note||'',d.device||'']}));
+}
+async function fetchDownRange(from,to){const r=await rpc('crusher_downtime_range',{p_from:from,p_to:to});if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
+async function fetchRange(from,to){const r=await rpc('crusher_range',{p_from:from,p_to:to});if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
+async function exportShift(id){
+  const [date,name]=id.split('|');
+  try{const taps=(await fetchRange(date,date)).filter(t=>t.shift_name===name);
+    const stops=(await fetchDownRange(date,date)).filter(d=>d.shift_name===name);
+    if(!taps.length&&!stops.length){alert('Nothing logged in that shift.');return}
+    download('tipm8-crusher-'+date+'-'+name.toLowerCase()+'.csv',toCsv(tapRows(taps).concat(downCsv(stops))));
+  }catch(e){alert('Could not fetch that shift: '+(e.message||'no connection'))}
+}
+async function exportAllTaps(){
+  if(!histRows.length){alert('No shifts in view to export.');return}
+  const from=histFrom||histRows[histRows.length-1].shift_date, to=histTo||histRows[0].shift_date;
+  try{const taps=await fetchRange(from,to), stops=await fetchDownRange(from,to);
+    if(!taps.length&&!stops.length){alert('Nothing logged between '+from+' and '+to+'.');return}
+    download('tipm8-crusher-taps-'+from+'-to-'+to+'.csv',toCsv(tapRows(taps).concat(downCsv(stops))));
+  }catch(e){alert('Could not fetch that range: '+(e.message||'no connection'))}
+}
+function exportShifts(){
+  if(!histRows.length){alert('No shifts in view to export.');return}
+  const rows=[['shift_date','shift','excavator_buckets','in_t','loader_buckets','loader_t','truck_loads','truck_t','out_t','in_less_out_t','out_pct_of_in','downtime_min']];
+  histRows.slice().reverse().forEach(x=>{const i=+x.in_t||0,o=rowOut(x);
+    rows.push([x.shift_date,x.shift_name,+x.in_n||0,r1(i),+x.loader_n||0,r1(x.loader_t),+x.truck_n||0,r1(x.truck_t),r1(o),r1(i-o),i>0?Math.round(o/i*1000)/10:'',r1(x.down_min)])});
+  download('tipm8-crusher-shifts-'+histRows[histRows.length-1].shift_date+'-to-'+histRows[0].shift_date+'.csv',toCsv(rows));
+}
+
+function renderSync(){
+  $('#roleChips').innerHTML=[['logger','Logging'],['viewer','Watching']].map(([k,t])=>`<button type="button" data-role="${k}" aria-pressed="${role===k}">${t}</button>`).join('');
+  const dot=$('#syncDot'), note=$('#syncNote'), queued=queuedN();
+  dot.className='dot';
+  if(dbMissing){dot.classList.add('warn');note.textContent=logging()
+    ?'The shared log has no crusher tables yet. Taps are safe on this device and send once it does.'
+    :'The shared log has no crusher tables yet.'}
+  else if(syncErr&&queued){dot.classList.add('warn');note.textContent='Saved on this device, waiting to send: '+syncErr+'. Logging is unaffected.'}
+  else if(syncErr){dot.classList.add('err');note.textContent='Cannot reach the log: '+syncErr}
+  else if(pushing){note.textContent='Sending…'}
+  else if(logging()){
+    if(lastPush){dot.classList.add('live');note.textContent='Sent '+fmtDur(now()-lastPush)+' ago.'}
+    else note.textContent=queued?'Waiting to send.':'Starts sending on the first tap.'}
+  else if(lastPull){dot.classList.add(now()-lastPull>30000?'warn':'live');note.textContent='Read only. Checked '+fmtDur(now()-lastPull)+' ago.'}
+  else note.textContent='Connecting…';
+  const off=-new Date().getTimezoneOffset()-SITE_OFFSET_MIN, box=$('#tzNote');
+  box.hidden=!off;
+  if(off)$('#tzText').textContent='This device is '+(Math.round(Math.abs(off)/6)/10)+' h '+(off>0?'ahead of':'behind')+' site. Shifts and times are site time ('+SITE_LABEL+'), now '+fmtHM(now())+'.';
+}
+function renderAll(){renderOre();renderTaps();renderSettings();renderClock();renderStats();renderBreakdown();renderDown();renderCharts();renderLog();renderHist();renderSync()}
+
+/* ---- Actions ---- */
+/* Shifts change over at 06:30 and 18:30 as they do for the ROM pad and COS. The closed shift goes
+   into the outbox whole, and anything stamped after the changeover moves to the new shift. */
+function rollShift(){
+  if(!S.shift.key||sameKey(S.shift.key,shiftKey()))return false;
+  const b=shiftStart();
+  if(b<=S.shift.startedAt)return false;                /* clock jumped backwards: leave it alone */
+  const carry=S.taps.filter(t=>t.t>=b);
+  S.taps=S.taps.filter(t=>t.t<b);
+  S.outbox[mkey(S.shift.key)]=snapshot();
+  S.taps=carry;
+  S.shift=carry.length?{key:shiftKey(b),startedAt:b}:blankShift();
+  if(S.shift.key)S.outbox[mkey(S.shift.key)]=snapshot();
+  persist();schedulePush(200);
+  return true;
+}
+function tap(m){
+  if(!logging()||!ready(m)||flashing[m])return;
+  rollShift();
+  const t=now();
+  if(!S.shift.key){S.shift={key:shiftKey(t),startedAt:shiftStart(t)}}
+  S.taps.push({id:uid(),t,m,ore:S.ore,tonnes:perTap(m)});
+  save();
+  if(navigator.vibrate)navigator.vibrate(40);
+  const b=$('#tap-'+m), n=S.taps.filter(x=>x.m===m).length;
+  flashing[m]=true;
+  b.classList.add('logged');
+  b.querySelector('.s').textContent=`${MACHINES[m].per==='load'?'Load':'Bucket'} ${n}, ${perTap(m).toFixed(1)} t ${S.ore}`;
+  /* long enough to stop a double tap, short enough for buckets coming every few seconds */
+  setTimeout(()=>{flashing[m]=false;b.classList.remove('logged');renderTaps()},800);
+  renderAll();
+}
+function undo(){if(!S.taps.length)return;S.taps.pop();save();renderAll()}
+
+let editId=null, editOre=null, editM=null;
+const modalOpen=()=>!$('#editModal').hidden;
+function renderEditPicks(){
+  $('#eMachine').innerHTML=MKEYS.map(m=>`<button type="button" data-em="${m}" aria-pressed="${editM===m}">${MACHINES[m].short}</button>`).join('');
+  $('#eOre').innerHTML=ORES.map(o=>`<button type="button" data-eore="${o.k}" style="--ore:${o.c}" aria-pressed="${editOre===o.k}">${o.k}</button>`).join('');
+}
+function openEdit(id){
+  const t=S.taps.find(x=>x.id===id);if(!t)return;
+  editId=id;editOre=t.ore;editM=t.m;
+  $('#eTime').value=fmtTime(t.t);$('#eTonnes').value=t.tonnes;
+  renderEditPicks();$('#editModal').hidden=false;
+}
+function closeEdit(){$('#editModal').hidden=true;editId=null}
+function saveEdit(){
+  const t=S.taps.find(x=>x.id===editId);if(!t)return closeEdit();
+  const p=($('#eTime').value||'').split(':').map(Number);
+  if(p.length>=2&&p.every(isFinite)){const d=sd(t.t);t.t=sEpoch(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),p[0],p[1],p[2]||0)}
+  const tn=parseFloat($('#eTonnes').value);if(isFinite(tn)&&tn>=0&&tn<=1000)t.tonnes=Math.round(tn*100)/100;
+  t.ore=editOre;t.m=editM;
+  S.taps.sort((a,b)=>a.t-b.t);
+  closeEdit();save();renderAll();
+}
+function delEdit(){
+  const id=editId;if(!confirm('Delete this tap?'))return;
+  S.taps=S.taps.filter(x=>x.id!==id);closeEdit();save();renderAll();
+}
+
+/* ---- Downtime entry -----------------------------------------------------------------------
+   Start and restart go in together, once the crusher is running again, so a stop can never be
+   left open. The delay log taken out of the main app in October asked for a tap at each end, and
+   the second tap did not happen: its "No trucks" delays average over eleven hours. */
+let downId=null, downReason=null;
+const downOpen=()=>!$('#downModal').hidden;
+function renderDownReasons(){
+  $('#dReasons').innerHTML=REASONS.map(r=>`<button type="button" data-reason="${esc(r)}" aria-pressed="${downReason===r}">${esc(r)}</button>`).join('');
+}
+/* A stop is filed by shift, so one crossing a changeover becomes one piece per shift. */
+function downPieces(a,b){
+  const out=[];let s=a;
+  for(;;){const e=shiftStart(s)+SHIFT_MS;
+    if(b<=e){out.push({shift:shiftKey(s),a:s,b});return out}
+    out.push({shift:shiftKey(s),a:s,b:e});s=e}
+}
+function readDown(){
+  const dv=$('#dDate').value, sv=$('#dStart').value, ev=$('#dEnd').value;
+  if(!dv)return{err:'Enter the date it stopped.'};
+  if(!sv)return{err:'Enter the start time.'};
+  if(!ev)return{err:'Enter the restart time. Add the stop once the crusher is running again.'};
+  const [y,mo,d]=dv.split('-').map(Number), [sh,sm]=sv.split(':').map(Number), [eh,em]=ev.split(':').map(Number);
+  const a=sEpoch(y,mo-1,d,sh,sm,0);
+  let b=sEpoch(y,mo-1,d,eh,em,0);
+  if(b<=a)b+=86400000;     /* restart before start means it ran past midnight */
+  if(a>now())return{err:'The start is in the future.',a,b};
+  if(b>now())return{err:'The restart is in the future. Add the stop once the crusher is running again.',a,b};
+  if(now()-a>DOWN_DAYS*86400000)return{err:'That is more than '+DOWN_DAYS+' days ago, too far back to enter here.',a,b};
+  const hit=downRows().find(r=>r.id!==downId&&r.a<b&&a<r.b);
+  if(hit)return{err:'That overlaps '+hit.reason+', '+fmtHM(hit.a)+' to '+fmtHM(hit.b)+'. Correct that stop instead.',a,b};
+  return{a,b};
+}
+function previewDown(){
+  const r=readDown(), el=$('#dPreview');
+  if(r.a==null||r.b==null){el.textContent='';return}
+  const parts=downPieces(r.a,r.b);
+  el.textContent=fmtMin(r.b-r.a)+' down'+(parts.length>1
+    ?', crossing the changeover, so filed as '+parts.map(p=>fmtMin(p.b-p.a)+' on '+p.shift.name+' '+fmtDate(dOf(p.shift.date))).join(' and ')
+    :', on '+parts[0].shift.name+' '+fmtDate(dOf(parts[0].shift.date)));
+}
+function openDown(id){
+  const r=id?downRows().find(x=>x.id===id):null;
+  downId=r?r.id:null;downReason=r?r.reason:null;
+  $('#downTitle').textContent=r?'Correct downtime':'Add downtime';
+  $('#dDate').value=ymd(r?r.a:now());
+  $('#dStart').value=r?fmtHM(r.a):'';$('#dEnd').value=r?fmtHM(r.b):'';
+  $('#dNote').value=r?r.note||'':'';
+  $('#dErr').textContent='';
+  $('#dDel').hidden=!r;
+  renderDownReasons();previewDown();
+  $('#downModal').hidden=false;
+}
+function closeDown(){$('#downModal').hidden=true;downId=null}
+function saveDown(){
+  const r=readDown(), note=$('#dNote').value.trim();
+  if(r.err){$('#dErr').textContent=r.err;return}
+  if(!downReason){$('#dErr').textContent='Pick a reason.';return}
+  if(downReason==='Other'&&!note){$('#dErr').textContent='Say what the reason was in the note.';return}
+  downPieces(r.a,r.b).forEach((p,i)=>{const id=(i===0&&downId)||uid();
+    S.downOut[id]={id,shift:p.shift,a:p.a,b:p.b,reason:downReason,note}});
+  closeDown();persist();scheduleDown(300);renderAll();
+}
+function deleteDown(){
+  const r=downRows().find(x=>x.id===downId);if(!r)return closeDown();
+  if(!confirm('Delete this stop?'))return;
+  S.downOut[r.id]={...r,deleted:true};
+  closeDown();persist();scheduleDown(300);renderAll();
+}
+
+/* ---- Wiring ---- */
+MKEYS.forEach(m=>$('#tap-'+m).addEventListener('click',()=>tap(m)));
+$('#undoBtn').addEventListener('click',undo);
+$('#roleChips').addEventListener('click',e=>{const b=e.target.closest('[data-role]');if(b)setRole(b.dataset.role)});
+$('#oreSel').addEventListener('click',e=>{const b=e.target.closest('[data-ore]');if(!b)return;S.ore=b.dataset.ore;persist();renderOre();renderTaps()});
+$('#mSet').addEventListener('change',e=>{
+  const i=e.target.closest('input[data-m]');if(!i||!logging())return;
+  const m=i.dataset.m,f=i.dataset.f,v=num(i.value),[lo,hi]=f==='cap'?[0.1,500]:[0.1,1.5];
+  S.machines[m]={...S.machines[m],[f]:v==null?null:Math.max(lo,Math.min(hi,v))};
+  i.value=S.machines[m][f]==null?'':S.machines[m][f];i.classList.toggle('need',!(S.machines[m][f]>0));
+  save();renderTaps();renderSettings();
+});
+$('#mSet').addEventListener('focusout',()=>setTimeout(()=>{if(!$('#mSet').contains(document.activeElement))renderSettings()},0));
+$('#logBody').addEventListener('click',e=>{
+  const a=e.target.closest('[data-logall]');if(a){logAll=a.dataset.logall==='1';return renderLog()}
+  const r=e.target.closest('[data-edit]');if(r)openEdit(r.dataset.edit);
+});
+$('#addDown').addEventListener('click',()=>{if(logging())openDown(null)});
+$('#downBody').addEventListener('click',e=>{
+  const a=e.target.closest('[data-downall]');if(a){downAll=a.dataset.downall==='1';return renderDown()}
+  const r=e.target.closest('[data-down]');if(r&&logging())openDown(r.dataset.down);
+});
+$('#dReasons').addEventListener('click',e=>{const b=e.target.closest('[data-reason]');if(b){downReason=b.dataset.reason;renderDownReasons();$('#dErr').textContent=''}});
+['dDate','dStart','dEnd'].forEach(id=>$('#'+id).addEventListener('input',()=>{$('#dErr').textContent='';previewDown()}));
+$('#dSave').addEventListener('click',saveDown);
+$('#dCancel').addEventListener('click',closeDown);
+$('#dDel').addEventListener('click',deleteDown);
+$('#downModal').addEventListener('click',e=>{if(e.target===$('#downModal'))closeDown()});
+$('#eSave').addEventListener('click',saveEdit);
+$('#eCancel').addEventListener('click',closeEdit);
+$('#eDel').addEventListener('click',delEdit);
+$('#eMachine').addEventListener('click',e=>{const b=e.target.closest('[data-em]');if(b){editM=b.dataset.em;renderEditPicks()}});
+$('#eOre').addEventListener('click',e=>{const b=e.target.closest('[data-eore]');if(b){editOre=b.dataset.eore;renderEditPicks()}});
+$('#editModal').addEventListener('click',e=>{if(e.target===$('#editModal'))closeEdit()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(modalOpen())closeEdit();if(downOpen())closeDown()}});
+$('#histFrom').addEventListener('change',e=>{histFrom=e.target.value||'';pullHistory(true)});
+$('#histTo').addEventListener('change',e=>{histTo=e.target.value||'';pullHistory(true)});
+$('#histClear').addEventListener('click',()=>{histFrom=histTo='';$('#histFrom').value='';$('#histTo').value='';pullHistory(true)});
+$('#histCsv').addEventListener('click',exportShifts);
+$('#histAllCsv').addEventListener('click',exportAllTaps);
+$('#histBody').addEventListener('click',e=>{const c=e.target.closest('[data-csv]');if(c)exportShift(c.dataset.csv)});
+const tipBox=document.createElement('div');tipBox.className='charttip';tipBox.hidden=true;document.body.appendChild(tipBox);
+let tipOn=null;
+function showTip(el,x,y){
+  if(tipOn!==el){if(tipOn)tipOn.classList.remove('on');tipOn=el;el.classList.add('on');
+    tipBox.innerHTML=(el.getAttribute('data-tip')||'').split('\n').map((l,i)=>i?esc(l):'<b>'+esc(l)+'</b>').join('\n');tipBox.hidden=false}
+  const r=tipBox.getBoundingClientRect(),edge=12;let left=x+16,top=y-r.height-14;
+  if(left+r.width>innerWidth-edge)left=x-r.width-16;if(left<edge)left=edge;if(top<edge)top=Math.min(y+20,innerHeight-r.height-edge);
+  tipBox.style.left=left+'px';tipBox.style.top=top+'px';
+}
+function hideTip(){if(tipOn)tipOn.classList.remove('on');tipOn=null;tipBox.hidden=true}
+const tipTarget=e=>e.target&&e.target.closest?e.target.closest('svg .tips [data-tip]'):null;
+document.addEventListener('pointermove',e=>{const t=tipTarget(e);if(t)showTip(t,e.clientX,e.clientY);else if(tipOn)hideTip()},{passive:true});
+document.addEventListener('pointerdown',e=>{const t=tipTarget(e);if(t)showTip(t,e.clientX,e.clientY);else hideTip()},{passive:true});
+window.addEventListener('scroll',hideTip,{passive:true});
+window.addEventListener('online',()=>{drain();drainDown();pull()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){rollShift();pull();renderAll()}});
+
+document.body.dataset.role=role;
+rollShift();
+renderAll();
+pull();startPolling();
+if(Object.keys(S.outbox).length)schedulePush(500);
+if(Object.keys(S.downOut).length)scheduleDown(700);
+if(/[?&]mode=log\b/.test(location.search)&&!logging())setTimeout(()=>setRole('logger'),0);
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+let lastChart=0;
+setInterval(()=>{if(rollShift())renderAll();renderClock();renderSync();if(now()-lastChart>60000){lastChart=now();renderStats();renderCharts()}},1000);
+})();
+</script>
+</body>
+</html>

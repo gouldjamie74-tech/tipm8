@@ -152,6 +152,49 @@ shift left a live shift marked as ended, freezing the dashboard, and a pad left 
 shift refuses tips until the next changeover — up to twelve hours. A pad that ended its
 shift before the buttons went reopens it on load if it is still inside that shift's window.
 
+## Mobile crusher
+`crusher.html`, linked from the header, logs a mobile crusher by the bucket: **excavator
+buckets in, loader buckets and truck loads out**, tapped by one person on one device. The ore
+sources are the usual ones without Scats, and one ore selection applies to all three buttons.
+A row in the tap log can be corrected if the two sides were on different ore at a change.
+
+**Tonnes per tap** are capacity × fill, held per machine and editable on screen. They start
+blank and a machine's button stays off until both are entered, because a made-up bucket size
+would produce tonnes that look real. Each tap keeps the tonnes it was logged with, so changing a
+figure never rewrites what has already been counted. Capacity is in tonnes.
+
+**Count each load out once.** If the loader is filling a truck, tap Truck load only. Tapping
+both would count the same material twice.
+
+**In less out** is what is still in the crusher or on its discharge pile, plus the error in
+counting by the bucket. It turns amber if more has been counted out than in. Rates and hourly
+charts are measured from the shift changeover, 06:30 and 18:30, the same as everywhere else.
+
+**Downtime** is entered as a whole stop: date, start, restart, reason, and a note if the reason
+is Other. Both times are required and neither can be in the future, so it goes in once the
+crusher is running again and a stop can never be left open. That is deliberate. The delay log
+removed from the main app (see above) asked for a tap at each end and the second tap did not
+happen. A stop that overlaps another is refused, and one crossing 06:30 or 18:30 is filed as one
+stop per shift, so each shift carries its own share. Stops from the last 7 days can be entered,
+corrected or deleted. Older ones are outside what the page offers.
+
+Downtime gives the time down by reason, the share of the shift so far not down, t/h in and out
+excluding downtime, shading on the running total chart, a Down column in Previous shifts, and a
+DOWNTIME section in the CSV exports. These figures only know about stops someone entered. Time
+with no taps and no stop entered counts as running.
+
+**It is kept fully apart from the ROM pad, COS and mill figures.** It has its own local storage
+key (`tipm8.crusher.v1`), its own role setting, its own tables (`crusher_shifts`,
+`crusher_taps`, `crusher_downtime`) and its own functions (`crusher_sync`, `crusher_active`,
+`crusher_summaries`, `crusher_range`, `crusher_downtime_sync`, `crusher_downtime_range`), defined in `sql/2026-11-05_mobile_crusher.sql`. Nothing in `index.html` reads
+them, and the page uses none of the older functions.
+
+Sync follows the same rules with one improvement: the outbox is saved to the device, so taps
+waiting on a signal survive the app being closed. Rows and pruning are scoped to the device, so
+a replacement pad cannot wipe or overwrite what another recorded, and it shows the other
+device's taps read only so the shift still totals correctly. Unlike the older tables, the
+publishable key has no direct access to the crusher tables, only through those functions.
+
 ## Data
 Saved in the browser's local storage on each device (key `tipm8.v1`) — it survives a
 refresh, but it is per-device and per-browser, and clearing site data wipes it.
