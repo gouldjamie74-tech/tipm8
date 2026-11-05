@@ -152,19 +152,26 @@ shift left a live shift marked as ended, freezing the dashboard, and a pad left 
 shift refuses tips until the next changeover — up to twelve hours. A pad that ended its
 shift before the buttons went reopens it on load if it is still inside that shift's window.
 
-## Mobile crusher
+## Mobile crusher and grizzly
 **The app opens on this page.** `index.html` sends every visitor to `crusher.html` unless the
 address carries `?main=1`, which is the page's link back to ROM pad and COS, or `?party=`, so
 existing bookmarks still work. A pad that was logging ROM pad or COS keeps its log and sends
 anything queued the next time it opens that page. To make ROM/COS the front page again, remove
 the short script at the top of `index.html`.
 
-`crusher.html` logs a mobile crusher by the bucket: **excavator
+`crusher.html` logs two plants the same way, the mobile crusher and the grizzly, by the bucket: **excavator
 buckets in, loader buckets and truck loads out**, tapped by one person on one device. The ore
 sources are the usual ones without Scats, and one ore selection applies to all three buttons.
 A row in the tap log can be corrected if the two sides were on different ore at a change.
 
-**Tonnes per tap** are capacity × fill, held per machine and editable on screen. They start
+**Pick the plant first.** Two large buttons under the shift clock choose Mobile crusher or Grizzly,
+and each shows that plant's tonnes in, tonnes out and downtime so both can be read at a glance. Every
+tap and stop records the plant, and everything else on the screen is the plant picked. Undo only
+touches the plant showing, and a tap on the wrong plant is moved by correcting its row. The plants are
+separate streams, nothing passes through both, so once both have logged a line under the picker gives
+their combined tonnes. Everything else stays per plant. The `crusher_` names in the database cover both plants.
+
+**Tonnes per tap** are capacity × fill, held per plant and machine and editable on screen. They start
 blank and a machine's button stays off until both are entered, because a made-up bucket size
 would produce tonnes that look real. Each tap keeps the tonnes it was logged with, so changing a
 figure never rewrites what has already been counted. Capacity is in tonnes.
@@ -180,7 +187,7 @@ charts are measured from the shift changeover, 06:30 and 18:30, the same as ever
 is Other. Both times are required and neither can be in the future, so it goes in once the
 crusher is running again and a stop can never be left open. That is deliberate. The delay log
 removed from the main app (see above) asked for a tap at each end and the second tap did not
-happen. A stop that overlaps another is refused, and one crossing 06:30 or 18:30 is filed as one
+happen. Each stop is for one plant, and a stop that overlaps another on the same plant is refused, and one crossing 06:30 or 18:30 is filed as one
 stop per shift, so each shift carries its own share. Stops from the last 7 days can be entered,
 corrected or deleted. Older ones are outside what the page offers.
 

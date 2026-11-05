@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0E141B">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>TipM8 — Mobile crusher</title>
+<title>TipM8 — Crusher and grizzly</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -116,6 +116,7 @@ tr.edit:hover td{background:var(--surface)}
 .sheet input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font-variant-numeric:tabular-nums;min-height:44px}
 .sheet .ore{grid-template-columns:repeat(2,1fr)}
 .sheet .picks{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.sheet .picks.two-up{grid-template-columns:repeat(2,1fr)}
 .sheet .picks button{min-height:44px;border-radius:8px;background:var(--bg);border:1px solid var(--line);color:var(--muted);font-size:14px}
 .sheet .picks button[aria-pressed="true"]{color:var(--text);border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
 .sheet .err{color:var(--red);font-size:14px;margin:0 0 10px}
@@ -124,6 +125,12 @@ tr.edit:hover td{background:var(--surface)}
 .sheet .chipset{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:6px}
 .sheet .chipset button{min-height:44px;border-radius:8px;background:var(--bg);border:1px solid var(--line);color:var(--muted);font-size:14px;padding:0 4px}
 .sheet .chipset button[aria-pressed="true"]{color:var(--text);border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.plants{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.plants button{min-height:68px;border-radius:10px;background:var(--surface);border:1px solid var(--line);padding:8px 10px;color:var(--muted);text-align:left;min-width:0}
+.plants b{display:block;font-family:var(--mark);font-weight:700;font-size:17px;letter-spacing:-.01em}
+.plants span{display:block;font-size:13px;margin-top:2px;font-variant-numeric:tabular-nums}
+.plants button[aria-pressed="true"]{color:var(--text);border-color:var(--blue);box-shadow:inset 0 0 0 2px var(--blue)}
+.stat-h{font-family:var(--mark);font-weight:700;letter-spacing:.02em;text-transform:uppercase;font-size:12px;color:var(--muted);margin-bottom:12px}
 .add-down{width:100%;margin-top:12px;min-height:52px;border-color:var(--amber);color:var(--amber)}
 .sub-h{font-size:14px;font-weight:500;color:var(--muted);margin:14px 0 6px}
 body[data-role="viewer"] .writer{display:none}
@@ -135,7 +142,7 @@ body[data-role="viewer"] .writer{display:none}
 <header>
   <div>
     <div class="mark">Tip<span>M8</span></div>
-    <div class="sub">Mobile crusher<a href="index.html?main=1">ROM pad and COS</a></div>
+    <div class="sub">Crusher and grizzly<a href="index.html?main=1">ROM pad and COS</a></div>
   </div>
   <div class="hd-sync">
     <div class="chips" id="roleChips" role="group" aria-label="Device role"></div>
@@ -150,13 +157,15 @@ body[data-role="viewer"] .writer{display:none}
   <section>
     <div class="shift-name" id="shiftName">—</div>
     <div class="clock"><span class="t" id="elapsed">00:00:00</span><span class="sub" id="shiftStatus"></span></div>
+    <div class="plants" id="plantSel" role="group" aria-label="Plant"></div>
+    <div class="note" id="plantsTotal"></div>
   </section>
 
   <section class="writer">
     <div class="ore" id="oreSel" role="group" aria-label="Ore source"></div>
-    <div class="side-h">Into the crusher</div>
+    <div class="side-h" id="sideIn"></div>
     <button class="tap in" id="tap-excavator" data-m="excavator"><span class="m">Excavator bucket</span><span class="s"></span></button>
-    <div class="side-h">Out of the crusher</div>
+    <div class="side-h" id="sideOut"></div>
     <div class="outs">
       <button class="tap out" id="tap-loader" data-m="loader"><span class="m">Loader bucket</span><span class="s"></span></button>
       <button class="tap out" id="tap-truck" data-m="truck"><span class="m">Truck load</span><span class="s"></span></button>
@@ -170,6 +179,7 @@ body[data-role="viewer"] .writer{display:none}
   </section>
 
   <section>
+    <div class="stat-h" id="statHead"></div>
     <div class="stats">
       <div class="stat big"><div class="v" id="inT">0</div><div class="l">tonnes in</div></div>
       <div class="stat big"><div class="v" id="outT">0</div><div class="l">tonnes out</div></div>
@@ -191,7 +201,7 @@ body[data-role="viewer"] .writer{display:none}
   </section>
 
   <section>
-    <h2>Tonnes per tap</h2>
+    <h2 id="setHead">Tonnes per tap</h2>
     <div id="mSet"></div>
     <div class="note">Capacity in tonnes × fill factor. A change applies to the next tap. Taps already logged keep their tonnes.</div>
   </section>
@@ -200,7 +210,7 @@ body[data-role="viewer"] .writer{display:none}
 <div class="col-b">
 
   <section>
-    <h2>In and out by ore</h2>
+    <h2 id="oreHead">In and out by ore</h2>
     <div class="tbl"><table>
       <thead><tr><th>Ore source</th><th class="r">Buckets in</th><th class="r">t in</th><th class="r">Loader</th><th class="r">Truck</th><th class="r">t out</th><th class="r">In less out</th></tr></thead>
       <tbody id="oreBody"></tbody>
@@ -209,21 +219,21 @@ body[data-role="viewer"] .writer{display:none}
   </section>
 
   <section>
-    <h2>Downtime</h2>
+    <h2 id="downHead">Downtime</h2>
     <div class="tbl"><table>
       <thead><tr><th>Reason</th><th class="r">Stops</th><th class="r">Time down</th><th class="r">Share</th></tr></thead>
       <tbody id="downReasons"></tbody>
     </table></div>
-    <div class="sub-h">Stops in the last 7 days</div>
+    <div class="sub-h">Stops in the last 7 days, both plants</div>
     <div class="tbl"><table>
-      <thead><tr><th>Shift</th><th>Start</th><th>Restart</th><th class="r">Length</th><th>Reason</th><th>Note</th></tr></thead>
+      <thead><tr><th>Shift</th><th>Plant</th><th>Start</th><th>Restart</th><th class="r">Length</th><th>Reason</th><th>Note</th></tr></thead>
       <tbody id="downBody"></tbody>
     </table></div>
     <div class="note writer">Tap a row to correct or delete it.</div>
   </section>
 
   <section>
-    <h2>Trends this shift</h2>
+    <h2 id="trendHead">Trends this shift</h2>
     <div class="chart"><h3>Tonnes by hour</h3><div id="c-hour"></div>
       <div class="legend"><span><i style="background:var(--amber)"></i>in</span><span><i style="background:var(--blue)"></i>out</span></div></div>
     <div class="chart"><h3>Running total</h3><div id="c-cum"></div>
@@ -231,12 +241,12 @@ body[data-role="viewer"] .writer{display:none}
   </section>
 
   <section>
-    <h2>Tap log</h2>
+    <h2 id="logHead">Tap log</h2>
     <div class="tbl"><table>
       <thead><tr><th>#</th><th>Time</th><th>Side</th><th>Machine</th><th>Ore</th><th class="r">t</th></tr></thead>
       <tbody id="logBody"></tbody>
     </table></div>
-    <div class="note writer">Tap a row to correct its time, machine, ore or tonnes.</div>
+    <div class="note writer">Tap a row to correct its plant, time, machine, ore or tonnes.</div>
   </section>
 
   <section>
@@ -249,7 +259,7 @@ body[data-role="viewer"] .writer{display:none}
       <button class="link" id="histAllCsv" type="button">Export every tap</button>
     </div>
     <div class="tbl"><table>
-      <thead><tr><th>Shift</th><th>Date</th><th class="r">Buckets in</th><th class="r">t in</th><th class="r">Loader</th><th class="r">Truck</th><th class="r">t out</th><th class="r">In less out</th><th class="r">Out %</th><th class="r">Down</th><th></th></tr></thead>
+      <thead><tr><th>Shift</th><th>Date</th><th>Plant</th><th class="r">Buckets in</th><th class="r">t in</th><th class="r">Loader</th><th class="r">Truck</th><th class="r">t out</th><th class="r">In less out</th><th class="r">Out %</th><th class="r">Down</th><th></th></tr></thead>
       <tbody id="histBody"></tbody>
     </table></div>
   </section>
@@ -260,6 +270,7 @@ body[data-role="viewer"] .writer{display:none}
 <div class="modal" id="editModal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="editTitle">
     <h2 id="editTitle">Edit tap</h2>
+    <div class="f"><div class="lab">Plant</div><div class="picks two-up" id="ePlant" role="group" aria-label="Plant"></div></div>
     <div class="f"><label for="eTime">Time logged, site time</label><input id="eTime" type="time" step="1"></div>
     <div class="f"><div class="lab">Machine</div><div class="picks" id="eMachine" role="group" aria-label="Machine"></div></div>
     <div class="f"><label for="eTonnes">Tonnes</label><input id="eTonnes" type="number" inputmode="decimal" step="0.1" min="0" max="1000"></div>
@@ -276,6 +287,7 @@ body[data-role="viewer"] .writer{display:none}
 <div class="modal" id="downModal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="downTitle">
     <h2 id="downTitle">Add downtime</h2>
+    <div class="f"><div class="lab">Plant</div><div class="picks two-up" id="dPlant" role="group" aria-label="Plant"></div></div>
     <div class="f"><label for="dDate">Date it stopped</label><input id="dDate" type="date"></div>
     <div class="two f">
       <div><label for="dStart">Start, site time</label><input id="dStart" type="time"></div>
@@ -298,7 +310,7 @@ body[data-role="viewer"] .writer{display:none}
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
 
-/* The crusher's own log, kept apart from the ROM pad and COS on purpose: its own storage key on
+/* The crusher and grizzly log, kept apart from the ROM pad and COS on purpose: its own storage key on
    the device and its own tables and functions in the database. See the mobile crusher section of
    the README. */
 const store=(()=>{let mem={},ok=false;
@@ -310,26 +322,40 @@ const store=(()=>{let mem={},ok=false;
 const KEY='tipm8.crusher.v1', ROLE_KEY='tipm8.crusher.role';
 const SB={url:'https://wwrhpkkqgpasiemepghu.supabase.co',key:'sb_publishable_La-Jaq3Eyd4wBPVGCqz2qw_lRs5yukb'};
 const LOG_PIN='1234';   /* the same code as the ROM pad and COS; see LOG_PIN in index.html */
-/* The site ore colour standard, as in index.html. Scats do not go through the crusher. */
+/* The site ore colour standard, as in index.html. Scats do not go through either plant. */
 const ORES=[{k:'Kopra',c:'#AC5E56'},{k:'Toka',c:'#1D8348'},{k:'Marawuwung',c:'#AE862B'},{k:'Araren',c:'#0E9BD0'},{k:'Alaskar',c:'#D9782E'}];
 const oreColor=k=>(ORES.find(o=>o.k===k)||{c:'#8A9BAE'}).c;
+/* Two plants measured the same way, and separate streams: nothing passes through both, which is
+   what makes the combined line under the picker a fair sum. */
+const PLANTS={crusher:{label:'Mobile crusher',word:'crusher'},grizzly:{label:'Grizzly',word:'grizzly'}};
+const PKEYS=Object.keys(PLANTS);
 const MACHINES={excavator:{label:'Excavator bucket',short:'Excavator',side:'in',per:'bucket'},
                 loader:{label:'Loader bucket',short:'Loader',side:'out',per:'bucket'},
                 truck:{label:'Truck load',short:'Truck',side:'out',per:'load'}};
 const MKEYS=Object.keys(MACHINES);
 const sideOf=m=>(MACHINES[m]||{}).side;
-/* The site's old delay list with Excavator down and No feed added, which only the crusher has. */
-const REASONS=['Crusher','Screen','Excavator down','Loader down','No trucks','No feed','Blast','Weather','Shift change','Meal','Other'];
+/* The site's old delay list with Grizzly, Excavator down and No feed added. */
+const REASONS=['Crusher','Grizzly','Screen','Excavator down','Loader down','No trucks','No feed','Blast','Weather','Shift change','Meal','Other'];
 
 /* Capacities start blank rather than at a guess: a made-up bucket size would produce tonnes that
    look real. A machine's button stays off until its capacity and fill are entered. */
 const blankMachines=()=>({excavator:{cap:null,fill:null},loader:{cap:null,fill:null},truck:{cap:null,fill:null}});
+const allMachines=()=>({crusher:blankMachines(),grizzly:blankMachines()});
+/* Before the grizzly, settings were one set per machine, and everything logged was the crusher. */
+const loadMachines=m=>{
+  const out=allMachines();
+  if(m&&m.excavator)out.crusher={...out.crusher,...m};
+  else if(m)PKEYS.forEach(p=>{out[p]={...out[p],...(m[p]||{})}});
+  return out;
+};
+const withPlant=r=>({p:'crusher',...r});
 const blankShift=()=>({key:null,startedAt:null});
 let S=(()=>{
-  const d={shift:blankShift(),machines:blankMachines(),ore:ORES[0].k,taps:[],outbox:{},down:[],downOut:{}};
+  const d={shift:blankShift(),machines:allMachines(),plant:'crusher',ore:ORES[0].k,taps:[],outbox:{},down:[],downOut:{}};
   try{const o=JSON.parse(store.get(KEY)||'null');
-    if(o)return{shift:{...d.shift,...(o.shift||{})},machines:{...d.machines,...(o.machines||{})},
-      ore:ORES.some(x=>x.k===o.ore)?o.ore:d.ore,taps:o.taps||[],outbox:o.outbox||{},down:o.down||[],downOut:o.downOut||{}}}catch(e){}
+    if(o)return{shift:{...d.shift,...(o.shift||{})},machines:loadMachines(o.machines),plant:PLANTS[o.plant]?o.plant:d.plant,
+      ore:ORES.some(x=>x.k===o.ore)?o.ore:d.ore,taps:(o.taps||[]).map(withPlant),outbox:o.outbox||{},down:(o.down||[]).map(withPlant),
+      downOut:Object.fromEntries(Object.entries(o.downOut||{}).map(([k,v])=>[k,withPlant(v)]))}}catch(e){}
   return d})();
 const persist=()=>store.set(KEY,JSON.stringify(S));
 
@@ -380,7 +406,7 @@ const logging=()=>role==='logger';
 function setRole(r){
   if(r===role)return;
   if(r==='logger'){
-    const v=prompt('Passcode to log the mobile crusher:');
+    const v=prompt('Passcode to log the crusher and grizzly:');
     if(v==null)return;
     if(String(v).trim()!==LOG_PIN){alert('Wrong passcode. Nothing changed. This device is still Watching.');return}
   }
@@ -396,12 +422,12 @@ const rpc=(fn,body)=>fetch(SB.url+'/rest/v1/rpc/'+fn,{method:'POST',
   headers:{'apikey':SB.key,'Authorization':'Bearer '+SB.key,'Content-Type':'application/json'},body:JSON.stringify(body||{})});
 let pushTimer=null, pushing=false, lastPush=null, lastPull=null, syncErr=null, dbMissing=false;
 const num=v=>{const n=parseFloat(v);return isFinite(n)?n:null};
-const ready=m=>{const c=S.machines[m];return !!c&&c.cap>0&&c.fill>0};
-const perTap=m=>ready(m)?Math.round(S.machines[m].cap*S.machines[m].fill*100)/100:null;
+const ready=(m,p=S.plant)=>{const c=S.machines[p][m];return !!c&&c.cap>0&&c.fill>0};
+const perTap=(m,p=S.plant)=>ready(m,p)?Math.round(S.machines[p][m].cap*S.machines[p][m].fill*100)/100:null;
 function snapshot(){
-  const machines={};MKEYS.forEach(m=>{if(ready(m))machines[m]=S.machines[m]});
+  const machines={};PKEYS.forEach(p=>MKEYS.forEach(m=>{if(ready(m,p))machines[p+':'+m]=S.machines[p][m]}));
   return{p_date:S.shift.key.date,p_name:S.shift.key.name,p_device:deviceName(),p_started_at:iso(S.shift.startedAt),
-    p_machines:machines,p_taps:S.taps.map(t=>({id:t.id,logged_at:iso(t.t),machine:t.m,ore:t.ore||'',tonnes:t.tonnes}))};
+    p_machines:machines,p_taps:S.taps.map(t=>({id:t.id,plant:t.p,logged_at:iso(t.t),machine:t.m,ore:t.ore||'',tonnes:t.tonnes}))};
 }
 function save(){
   if(S.shift.key)S.outbox[mkey(S.shift.key)]=snapshot();
@@ -425,7 +451,7 @@ async function drainDown(){
     try{
       const r=await rpc('crusher_downtime_sync',{p_date:k.date,p_name:k.name,p_device:deviceName(),
         p_started_at:iso(shiftStart(list[0].a)),
-        p_rows:list.map(x=>({id:x.id,started_at:iso(x.a),ended_at:iso(x.b),reason:x.reason,note:x.note||'',deleted:!!x.deleted}))});
+        p_rows:list.map(x=>({id:x.id,plant:x.p,started_at:iso(x.a),ended_at:iso(x.b),reason:x.reason,note:x.note||'',deleted:!!x.deleted}))});
       if(r.status===404){dbMissing=true;syncErr=null;break}
       if(!r.ok)throw new Error('the log refused it (HTTP '+r.status+')');
       dbMissing=false;syncErr=null;lastPush=now();
@@ -443,7 +469,7 @@ async function pullDown(){
     const r=await rpc('crusher_downtime_range',{p_from:from,p_to:to});
     if(!r.ok)return;
     const d=await r.json();
-    S.down=(Array.isArray(d)?d:[]).map(x=>({id:x.id,shift:{date:x.shift_date,name:x.shift_name},
+    S.down=(Array.isArray(d)?d:[]).map(x=>({id:x.id,p:x.plant||'crusher',shift:{date:x.shift_date,name:x.shift_name},
       a:Date.parse(x.started_at),b:Date.parse(x.ended_at),reason:x.reason,note:x.note||''}));
     persist();
   }catch(e){}
@@ -452,7 +478,7 @@ async function pullDown(){
 function downRows(){
   return S.down.filter(r=>!(r.id in S.downOut)).concat(Object.values(S.downOut).filter(x=>!x.deleted)).sort((x,y)=>y.a-x.a);
 }
-const downFor=key=>downRows().filter(r=>sameKey(r.shift,key));
+const downFor=(key,p=S.plant)=>downRows().filter(r=>sameKey(r.shift,key)&&r.p===p);
 
 async function drain(){
   if(pushing)return;
@@ -484,11 +510,11 @@ async function pull(){
     const d=await r.json(), sh=d&&d.shift;
     dbMissing=false;
     remote=sh?{key:{date:sh.shift_date,name:sh.shift_name},start:Date.parse(sh.started_at),machines:sh.machines||{},
-      taps:(d.taps||[]).map(t=>({id:t.id,t:Date.parse(t.logged_at),m:t.machine,ore:t.ore,tonnes:+t.tonnes||0,device:t.device}))}
+      taps:(d.taps||[]).map(t=>({id:t.id,p:t.plant||'crusher',t:Date.parse(t.logged_at),m:t.machine,ore:t.ore,tonnes:+t.tonnes||0,device:t.device}))}
       :{key:null,start:null,taps:[],machines:{}};
     /* A replacement device takes the bucket sizes it has none for, rather than asking again. */
     let got=false;
-    MKEYS.forEach(m=>{const c=remote.machines[m];if(!ready(m)&&c&&c.cap>0&&c.fill>0){S.machines[m]={cap:+c.cap,fill:+c.fill};got=true}});
+    PKEYS.forEach(p=>MKEYS.forEach(m=>{const c=remote.machines[p+':'+m];if(!ready(m,p)&&c&&c.cap>0&&c.fill>0){S.machines[p][m]={cap:+c.cap,fill:+c.fill};got=true}}));
     if(got)persist();
     lastPull=now();if(!queuedN())syncErr=null;
     await pullDown();
@@ -499,14 +525,16 @@ async function pull(){
 /* What the screen shows. A logging device shows its own log plus anything another device logged
    on the same shift, so a replacement pad still totals the whole shift. Rows from another device
    are read only here, and the server would refuse to let this device overwrite them anyway. */
-function view(){
+function viewAll(){
   if(!logging())return{key:remote.key,start:remote.start,taps:remote.taps};
   const key=S.shift.key||shiftKey(), me=deviceName();
   const others=sameKey(remote.key,key)?remote.taps.filter(t=>t.device!==me):[];
   const taps=S.taps.map(t=>({...t,mine:true})).concat(others).sort((a,b)=>a.t-b.t);
-  const stops=downFor(key);
+  const stops=downRows().filter(r=>sameKey(r.shift,key));
   return{key,start:S.shift.startedAt||(taps.length?shiftStart(taps[0].t):stops.length?shiftStart(stops[0].a):null),taps};
 }
+/* The shift and clock are shared. Everything else on the screen is one plant's. */
+function view(p=S.plant){const v=viewAll();return{...v,plant:p,taps:v.taps.filter(t=>t.p===p)}}
 function stats(v){
   const sum=a=>a.reduce((x,t)=>x+t.tonnes,0);
   const by=m=>v.taps.filter(t=>t.m===m);
@@ -517,7 +545,7 @@ function stats(v){
   const win=Math.min(30*60000,elapsed), cut=end-win;
   const rate=side=>running&&elapsed>=5*60000
     ?sum(v.taps.filter(t=>sideOf(t.m)===side&&t.t>=cut))/(win/HOUR):null;
-  const down=Math.min(elapsed,downFor(v.key).reduce((x,r)=>x+Math.max(0,Math.min(r.b,end)-Math.max(r.a,v.start||r.a)),0));
+  const down=Math.min(elapsed,downFor(v.key,v.plant).reduce((x,r)=>x+Math.max(0,Math.min(r.b,end)-Math.max(r.a,v.start||r.a)),0));
   const run=elapsed-down, rh=run/HOUR;
   return{down,avail:elapsed>=60000?run/elapsed:null,inRun:run>=60000?inT/rh:null,outRun:run>=60000?outT/rh:null,
     exc:exc.length,ldr:ldr.length,trk:trk.length,ldrT:sum(ldr),trkT:sum(trk),inT,outT,diff:v.taps.length?inT-outT:null,
@@ -527,6 +555,22 @@ function stats(v){
 }
 
 /* ---- Rendering ---- */
+function renderPlants(){
+  $('#plantSel').innerHTML=PKEYS.map(p=>{const st=stats(view(p));
+    return `<button type="button" data-plant="${p}" aria-pressed="${S.plant===p}"><b>${PLANTS[p].label}</b>`
+      +`<span>${fmtT(st.inT)} t in · ${fmtT(st.outT)} t out${st.down>0?' · '+fmtMin(st.down)+' down':''}</span></button>`}).join('');
+  const all=PKEYS.map(p=>stats(view(p))), both=all.every(st=>st.exc||st.ldr||st.trk);
+  $('#plantsTotal').textContent=both?'Both plants: '+fmtT(all.reduce((x,st)=>x+st.inT,0))+' t in · '+fmtT(all.reduce((x,st)=>x+st.outT,0))+' t out':'';
+  const L=PLANTS[S.plant];
+  $('#sideIn').textContent='Into the '+L.word;
+  $('#sideOut').textContent='Out of the '+L.word;
+  $('#statHead').textContent=L.label+', this shift';
+  $('#setHead').textContent='Tonnes per tap, '+L.word;
+  $('#oreHead').textContent='In and out by ore, '+L.word;
+  $('#trendHead').textContent='Trends this shift, '+L.word;
+  $('#logHead').textContent='Tap log, '+L.word;
+  $('#downHead').textContent='Downtime this shift, '+L.word;
+}
 function renderOre(){
   $('#oreSel').innerHTML=ORES.map(o=>`<button type="button" data-ore="${o.k}" style="--ore:${o.c}" aria-pressed="${S.ore===o.k}">${o.k}</button>`).join('');
 }
@@ -536,16 +580,16 @@ function renderTaps(){
     if(flashing[m])return;
     const b=$('#tap-'+m), ok=ready(m);
     b.disabled=!ok;
-    const c=S.machines[m];
+    const c=S.machines[S.plant][m];
     b.querySelector('.s').textContent=ok?`${S.ore}, ${c.cap} t × ${c.fill} = ${perTap(m).toFixed(1)} t`:'Set capacity and fill below';
   });
-  $('#undoBtn').disabled=!S.taps.length;
+  $('#undoBtn').disabled=!S.taps.some(t=>t.p===S.plant);
 }
 function renderSettings(){
   const box=$('#mSet'), active=document.activeElement;
   if(box.contains(active)&&active.tagName==='INPUT'){ /* never rebuild a field someone is typing in */
     MKEYS.forEach(m=>{const e=$('#per-'+m);if(e)e.textContent=ready(m)?perTap(m).toFixed(1)+' t':'—'});return}
-  const src=m=>logging()?S.machines[m]:(remote.machines[m]||{cap:null,fill:null});
+  const src=m=>logging()?S.machines[S.plant][m]:(remote.machines[S.plant+':'+m]||{cap:null,fill:null});
   box.innerHTML=MKEYS.map(m=>{const c=src(m), dis=logging()?'':' disabled';
     const need=f=>logging()&&!(f>0)?' class="need"':'';
     const per=c.cap>0&&c.fill>0?(Math.round(c.cap*c.fill*100)/100).toFixed(1)+' t':'—';
@@ -576,7 +620,7 @@ function renderStats(){
   $('#diffBox').classList.toggle('warn',st.diff!=null&&st.diff<-0.5);
   $('#balNote').textContent=st.diff==null?''
     :st.diff<-0.5?'More has been counted out than in. Check the capacity and fill figures, or whether output came from material already crushed.'
-    :'In less out is material still in the crusher or on its discharge pile, plus the error in counting by the bucket.';
+    :'In less out is material still in the plant or on its discharge pile, plus the error in counting by the bucket.';
 }
 function renderBreakdown(){
   const v=view(), oreKeys=ORES.map(o=>o.k).concat([...new Set(v.taps.map(t=>t.ore))].filter(k=>k&&!ORES.some(o=>o.k===k)));
@@ -653,12 +697,12 @@ function renderDown(){
     `<tr><td>${esc(k)}</td><td class="r">${by[k].n}</td><td class="r">${fmtMin(by[k].ms)}</td><td class="r">${pct(by[k].ms,total)}</td></tr>`).join('')
     :'<tr><td colspan="4" class="empty">No downtime entered this shift.</td></tr>';
   const all=downRows(), folded=!downAll&&all.length>DOWN_SHOWN, rows=folded?all.slice(0,DOWN_SHOWN):all;
-  const more=folded?`<tr><td colspan="6"><button type="button" class="link" data-downall="1">Show all ${all.length} stops</button></td></tr>`
-    :all.length>DOWN_SHOWN?`<tr><td colspan="6"><button type="button" class="link" data-downall="0">Show the last ${DOWN_SHOWN} only</button></td></tr>`:'';
+  const more=folded?`<tr><td colspan="7"><button type="button" class="link" data-downall="1">Show all ${all.length} stops</button></td></tr>`
+    :all.length>DOWN_SHOWN?`<tr><td colspan="7"><button type="button" class="link" data-downall="0">Show the last ${DOWN_SHOWN} only</button></td></tr>`:'';
   $('#downBody').innerHTML=all.length?rows.map(r=>`<tr class="${logging()?'edit':''}"${logging()?` data-down="${esc(r.id)}"`:''}>`
-    +`<td>${esc(r.shift.name)} ${fmtDate(dOf(r.shift.date))}</td><td>${fmtHM(r.a)}</td><td>${fmtHM(r.b)}</td><td class="r">${fmtMin(r.b-r.a)}</td>`
+    +`<td>${esc(r.shift.name)} ${fmtDate(dOf(r.shift.date))}</td><td>${PLANTS[r.p].label}</td><td>${fmtHM(r.a)}</td><td>${fmtHM(r.b)}</td><td class="r">${fmtMin(r.b-r.a)}</td>`
     +`<td>${esc(r.reason)}</td><td>${esc(r.note||'')}</td></tr>`).join('')+more
-    :'<tr><td colspan="6" class="empty">No stops entered.</td></tr>';
+    :'<tr><td colspan="7" class="empty">No stops entered.</td></tr>';
 }
 
 /* ---- Previous shifts, from the database, so any device can see them. ---- */
@@ -676,11 +720,11 @@ async function pullHistory(force){
 const rowOut=x=>(+x.loader_t||0)+(+x.truck_t||0);
 function renderHist(){
   $('#histBody').innerHTML=histRows.length?histRows.map(x=>{const i=+x.in_t||0,o=rowOut(x),any=+x.in_n||+x.loader_n||+x.truck_n;
-    return `<tr><td>${esc(x.shift_name)}</td><td>${fmtDate(dOf(x.shift_date))}</td><td class="r">${+x.in_n||0}</td><td class="r">${fmtT(i)}</td>`
+    return `<tr><td>${esc(x.shift_name)}</td><td>${fmtDate(dOf(x.shift_date))}</td><td>${esc((PLANTS[x.plant]||{label:x.plant}).label)}</td><td class="r">${+x.in_n||0}</td><td class="r">${fmtT(i)}</td>`
       +`<td class="r">${+x.loader_n||0}</td><td class="r">${+x.truck_n||0}</td><td class="r">${fmtT(o)}</td>`
       +`<td class="r">${any?signed(i-o):'—'}</td><td class="r">${pct(o,i)}</td><td class="r">${+x.down_min>0?fmtMin(+x.down_min*60000):'—'}</td>`
       +`<td><button type="button" class="link" data-csv="${esc(x.shift_date)}|${esc(x.shift_name)}">CSV</button></td></tr>`}).join('')
-    :`<tr><td colspan="11" class="empty">${histFrom||histTo?'No shifts in that date range.':'Shifts appear here after the first tap has reached the shared log.'}</td></tr>`;
+    :`<tr><td colspan="12" class="empty">${histFrom||histTo?'No shifts in that date range.':'Shifts appear here after the first tap has reached the shared log.'}</td></tr>`;
 }
 
 /* ---- Exports. timestamp_iso is the authoritative column. ---- */
@@ -688,20 +732,20 @@ const toCsv=rows=>rows.map(r=>r.map(v=>'"'+String(v==null?'':v).replace(/"/g,'""
 function download(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
 const r1=v=>Math.round((+v||0)*10)/10;
 function tapRows(taps){
-  /* running totals restart for each shift, and the in and out sides are never added together */
-  const rows=[['shift_date','shift','timestamp_iso','time_site','side','machine','ore','tonnes','cumulative_in_t','cumulative_out_t','device']];
+  /* running totals restart for each shift and plant, and in and out are never added together */
+  const rows=[['shift_date','shift','plant','timestamp_iso','time_site','side','machine','ore','tonnes','cumulative_in_t','cumulative_out_t','device']];
   const cum={};
-  taps.forEach(t=>{const k=t.shift_date+'|'+t.shift_name, c=cum[k]||(cum[k]={i:0,o:0}), side=sideOf(t.machine);
+  taps.forEach(t=>{const k=t.shift_date+'|'+t.shift_name+'|'+t.plant, c=cum[k]||(cum[k]={i:0,o:0}), side=sideOf(t.machine);
     if(side==='in')c.i+=+t.tonnes||0;else c.o+=+t.tonnes||0;
-    rows.push([t.shift_date,t.shift_name,t.logged_at,fmtTime(Date.parse(t.logged_at)),side,t.machine,t.ore||'',r1(t.tonnes),r1(c.i),r1(c.o),t.device||''])});
+    rows.push([t.shift_date,t.shift_name,t.plant,t.logged_at,fmtTime(Date.parse(t.logged_at)),side,t.machine,t.ore||'',r1(t.tonnes),r1(c.i),r1(c.o),t.device||''])});
   return rows;
 }
 /* Stops follow the taps in the same file, under their own heading. */
 function downCsv(list){
   if(!list.length)return[];
-  return[[],['DOWNTIME'],['shift_date','shift','start_iso','start_site','restart_iso','restart_site','minutes','reason','note','device']]
+  return[[],['DOWNTIME'],['shift_date','shift','plant','start_iso','start_site','restart_iso','restart_site','minutes','reason','note','device']]
     .concat(list.map(d=>{const a=Date.parse(d.started_at),b=Date.parse(d.ended_at);
-      return[d.shift_date,d.shift_name,d.started_at,fmtHM(a),d.ended_at,fmtHM(b),Math.round((b-a)/6000)/10,d.reason,d.note||'',d.device||'']}));
+      return[d.shift_date,d.shift_name,d.plant,d.started_at,fmtHM(a),d.ended_at,fmtHM(b),Math.round((b-a)/6000)/10,d.reason,d.note||'',d.device||'']}));
 }
 async function fetchDownRange(from,to){const r=await rpc('crusher_downtime_range',{p_from:from,p_to:to});if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
 async function fetchRange(from,to){const r=await rpc('crusher_range',{p_from:from,p_to:to});if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
@@ -723,9 +767,9 @@ async function exportAllTaps(){
 }
 function exportShifts(){
   if(!histRows.length){alert('No shifts in view to export.');return}
-  const rows=[['shift_date','shift','excavator_buckets','in_t','loader_buckets','loader_t','truck_loads','truck_t','out_t','in_less_out_t','out_pct_of_in','downtime_min']];
+  const rows=[['shift_date','shift','plant','excavator_buckets','in_t','loader_buckets','loader_t','truck_loads','truck_t','out_t','in_less_out_t','out_pct_of_in','downtime_min']];
   histRows.slice().reverse().forEach(x=>{const i=+x.in_t||0,o=rowOut(x);
-    rows.push([x.shift_date,x.shift_name,+x.in_n||0,r1(i),+x.loader_n||0,r1(x.loader_t),+x.truck_n||0,r1(x.truck_t),r1(o),r1(i-o),i>0?Math.round(o/i*1000)/10:'',r1(x.down_min)])});
+    rows.push([x.shift_date,x.shift_name,x.plant,+x.in_n||0,r1(i),+x.loader_n||0,r1(x.loader_t),+x.truck_n||0,r1(x.truck_t),r1(o),r1(i-o),i>0?Math.round(o/i*1000)/10:'',r1(x.down_min)])});
   download('tipm8-crusher-shifts-'+histRows[histRows.length-1].shift_date+'-to-'+histRows[0].shift_date+'.csv',toCsv(rows));
 }
 
@@ -748,7 +792,7 @@ function renderSync(){
   box.hidden=!off;
   if(off)$('#tzText').textContent='This device is '+(Math.round(Math.abs(off)/6)/10)+' h '+(off>0?'ahead of':'behind')+' site. Shifts and times are site time ('+SITE_LABEL+'), now '+fmtHM(now())+'.';
 }
-function renderAll(){renderOre();renderTaps();renderSettings();renderClock();renderStats();renderBreakdown();renderDown();renderCharts();renderLog();renderHist();renderSync()}
+function renderAll(){renderPlants();renderOre();renderTaps();renderSettings();renderClock();renderStats();renderBreakdown();renderDown();renderCharts();renderLog();renderHist();renderSync()}
 
 /* ---- Actions ---- */
 /* Shifts change over at 06:30 and 18:30 as they do for the ROM pad and COS. The closed shift goes
@@ -771,10 +815,10 @@ function tap(m){
   rollShift();
   const t=now();
   if(!S.shift.key){S.shift={key:shiftKey(t),startedAt:shiftStart(t)}}
-  S.taps.push({id:uid(),t,m,ore:S.ore,tonnes:perTap(m)});
+  S.taps.push({id:uid(),p:S.plant,t,m,ore:S.ore,tonnes:perTap(m)});
   save();
   if(navigator.vibrate)navigator.vibrate(40);
-  const b=$('#tap-'+m), n=S.taps.filter(x=>x.m===m).length;
+  const b=$('#tap-'+m), n=S.taps.filter(x=>x.m===m&&x.p===S.plant).length;
   flashing[m]=true;
   b.classList.add('logged');
   b.querySelector('.s').textContent=`${MACHINES[m].per==='load'?'Load':'Bucket'} ${n}, ${perTap(m).toFixed(1)} t ${S.ore}`;
@@ -782,17 +826,22 @@ function tap(m){
   setTimeout(()=>{flashing[m]=false;b.classList.remove('logged');renderTaps()},800);
   renderAll();
 }
-function undo(){if(!S.taps.length)return;S.taps.pop();save();renderAll()}
+/* the last tap on the plant showing, never one on the other plant out of sight */
+function undo(){
+  for(let i=S.taps.length-1;i>=0;i--)if(S.taps[i].p===S.plant){S.taps.splice(i,1);save();renderAll();return}
+}
 
-let editId=null, editOre=null, editM=null;
+let editId=null, editOre=null, editM=null, editP=null;
 const modalOpen=()=>!$('#editModal').hidden;
+const plantPicks=(sel,attr)=>PKEYS.map(p=>`<button type="button" ${attr}="${p}" aria-pressed="${sel===p}">${PLANTS[p].label}</button>`).join('');
 function renderEditPicks(){
+  $('#ePlant').innerHTML=plantPicks(editP,'data-ep');
   $('#eMachine').innerHTML=MKEYS.map(m=>`<button type="button" data-em="${m}" aria-pressed="${editM===m}">${MACHINES[m].short}</button>`).join('');
   $('#eOre').innerHTML=ORES.map(o=>`<button type="button" data-eore="${o.k}" style="--ore:${o.c}" aria-pressed="${editOre===o.k}">${o.k}</button>`).join('');
 }
 function openEdit(id){
   const t=S.taps.find(x=>x.id===id);if(!t)return;
-  editId=id;editOre=t.ore;editM=t.m;
+  editId=id;editOre=t.ore;editM=t.m;editP=t.p;
   $('#eTime').value=fmtTime(t.t);$('#eTonnes').value=t.tonnes;
   renderEditPicks();$('#editModal').hidden=false;
 }
@@ -802,7 +851,7 @@ function saveEdit(){
   const p=($('#eTime').value||'').split(':').map(Number);
   if(p.length>=2&&p.every(isFinite)){const d=sd(t.t);t.t=sEpoch(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),p[0],p[1],p[2]||0)}
   const tn=parseFloat($('#eTonnes').value);if(isFinite(tn)&&tn>=0&&tn<=1000)t.tonnes=Math.round(tn*100)/100;
-  t.ore=editOre;t.m=editM;
+  t.ore=editOre;t.m=editM;t.p=editP;
   S.taps.sort((a,b)=>a.t-b.t);
   closeEdit();save();renderAll();
 }
@@ -815,9 +864,10 @@ function delEdit(){
    Start and restart go in together, once the crusher is running again, so a stop can never be
    left open. The delay log taken out of the main app in October asked for a tap at each end, and
    the second tap did not happen: its "No trucks" delays average over eleven hours. */
-let downId=null, downReason=null;
+let downId=null, downReason=null, downPlant=null;
 const downOpen=()=>!$('#downModal').hidden;
 function renderDownReasons(){
+  $('#dPlant').innerHTML=plantPicks(downPlant,'data-dp');
   $('#dReasons').innerHTML=REASONS.map(r=>`<button type="button" data-reason="${esc(r)}" aria-pressed="${downReason===r}">${esc(r)}</button>`).join('');
 }
 /* A stop is filed by shift, so one crossing a changeover becomes one piece per shift. */
@@ -831,15 +881,16 @@ function readDown(){
   const dv=$('#dDate').value, sv=$('#dStart').value, ev=$('#dEnd').value;
   if(!dv)return{err:'Enter the date it stopped.'};
   if(!sv)return{err:'Enter the start time.'};
-  if(!ev)return{err:'Enter the restart time. Add the stop once the crusher is running again.'};
+  if(!ev)return{err:'Enter the restart time. Add the stop once it is running again.'};
   const [y,mo,d]=dv.split('-').map(Number), [sh,sm]=sv.split(':').map(Number), [eh,em]=ev.split(':').map(Number);
   const a=sEpoch(y,mo-1,d,sh,sm,0);
   let b=sEpoch(y,mo-1,d,eh,em,0);
   if(b<=a)b+=86400000;     /* restart before start means it ran past midnight */
   if(a>now())return{err:'The start is in the future.',a,b};
-  if(b>now())return{err:'The restart is in the future. Add the stop once the crusher is running again.',a,b};
+  if(b>now())return{err:'The restart is in the future. Add the stop once it is running again.',a,b};
   if(now()-a>DOWN_DAYS*86400000)return{err:'That is more than '+DOWN_DAYS+' days ago, too far back to enter here.',a,b};
-  const hit=downRows().find(r=>r.id!==downId&&r.a<b&&a<r.b);
+  /* the plants stop independently, so only the same plant can overlap */
+  const hit=downRows().find(r=>r.id!==downId&&r.p===downPlant&&r.a<b&&a<r.b);
   if(hit)return{err:'That overlaps '+hit.reason+', '+fmtHM(hit.a)+' to '+fmtHM(hit.b)+'. Correct that stop instead.',a,b};
   return{a,b};
 }
@@ -853,7 +904,7 @@ function previewDown(){
 }
 function openDown(id){
   const r=id?downRows().find(x=>x.id===id):null;
-  downId=r?r.id:null;downReason=r?r.reason:null;
+  downId=r?r.id:null;downReason=r?r.reason:null;downPlant=r?r.p:S.plant;
   $('#downTitle').textContent=r?'Correct downtime':'Add downtime';
   $('#dDate').value=ymd(r?r.a:now());
   $('#dStart').value=r?fmtHM(r.a):'';$('#dEnd').value=r?fmtHM(r.b):'';
@@ -870,7 +921,7 @@ function saveDown(){
   if(!downReason){$('#dErr').textContent='Pick a reason.';return}
   if(downReason==='Other'&&!note){$('#dErr').textContent='Say what the reason was in the note.';return}
   downPieces(r.a,r.b).forEach((p,i)=>{const id=(i===0&&downId)||uid();
-    S.downOut[id]={id,shift:p.shift,a:p.a,b:p.b,reason:downReason,note}});
+    S.downOut[id]={id,p:downPlant,shift:p.shift,a:p.a,b:p.b,reason:downReason,note}});
   closeDown();persist();scheduleDown(300);renderAll();
 }
 function deleteDown(){
@@ -882,14 +933,18 @@ function deleteDown(){
 
 /* ---- Wiring ---- */
 MKEYS.forEach(m=>$('#tap-'+m).addEventListener('click',()=>tap(m)));
+$('#plantSel').addEventListener('click',e=>{const b=e.target.closest('[data-plant]');if(!b)return;S.plant=b.dataset.plant;persist();renderAll()});
+$('#ePlant').addEventListener('click',e=>{const b=e.target.closest('[data-ep]');if(b){editP=b.dataset.ep;renderEditPicks()}});
+$('#dPlant').addEventListener('click',e=>{const b=e.target.closest('[data-dp]');if(b){downPlant=b.dataset.dp;renderDownReasons();$('#dErr').textContent='';previewDown()}});
 $('#undoBtn').addEventListener('click',undo);
 $('#roleChips').addEventListener('click',e=>{const b=e.target.closest('[data-role]');if(b)setRole(b.dataset.role)});
 $('#oreSel').addEventListener('click',e=>{const b=e.target.closest('[data-ore]');if(!b)return;S.ore=b.dataset.ore;persist();renderOre();renderTaps()});
 $('#mSet').addEventListener('change',e=>{
   const i=e.target.closest('input[data-m]');if(!i||!logging())return;
   const m=i.dataset.m,f=i.dataset.f,v=num(i.value),[lo,hi]=f==='cap'?[0.1,500]:[0.1,1.5];
-  S.machines[m]={...S.machines[m],[f]:v==null?null:Math.max(lo,Math.min(hi,v))};
-  i.value=S.machines[m][f]==null?'':S.machines[m][f];i.classList.toggle('need',!(S.machines[m][f]>0));
+  const set=S.machines[S.plant];
+  set[m]={...set[m],[f]:v==null?null:Math.max(lo,Math.min(hi,v))};
+  i.value=set[m][f]==null?'':set[m][f];i.classList.toggle('need',!(set[m][f]>0));
   save();renderTaps();renderSettings();
 });
 $('#mSet').addEventListener('focusout',()=>setTimeout(()=>{if(!$('#mSet').contains(document.activeElement))renderSettings()},0));

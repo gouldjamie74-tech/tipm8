@@ -1,5 +1,6 @@
--- Mobile crusher: excavator buckets in, loader buckets and truck loads out, one device logging
--- both sides. Its own tables and functions, with nothing shared with shifts, loads or milled:
+-- Mobile crusher and grizzly: excavator buckets in, loader buckets and truck loads out, one device
+-- logging both sides, with every tap and stop recording which plant it belongs to. The crusher_
+-- prefix on these names predates the grizzly and covers both. Its own tables and functions, with nothing shared with shifts, loads or milled:
 -- crusher tonnes must never reach the ROM pad, COS or mill figures, and nothing here can touch
 -- sync_party or active_shift.
 --
@@ -18,7 +19,7 @@ create table if not exists public.crusher_shifts (
   shift_date  date not null,
   shift_name  text not null check (shift_name in ('Day','Night')),
   started_at  timestamptz not null,
-  -- capacity and fill per machine: {"excavator":{"cap":12,"fill":0.9},...}. These are the current
+  -- capacity and fill per plant and machine: {"grizzly:excavator":{"cap":12,"fill":0.9},...}. These are the current
   -- settings only. Each tap keeps the tonnes it was logged with, so changing one never rewrites
   -- what has already been counted.
   machines    jsonb not null default '{}'::jsonb,
@@ -58,6 +59,11 @@ create table if not exists public.crusher_downtime (
 );
 create index if not exists crusher_downtime_shift_idx on public.crusher_downtime (shift_id, started_at);
 
+-- The plant is a column rather than a second set of tables. Added this way as well as above so
+-- the file also upgrades a database that ran the version before the grizzly.
+alter table public.crusher_taps     add column if not exists plant text not null default 'crusher' check (plant in ('crusher','grizzly'));
+alter table public.crusher_downtime add column if not exists plant text not null default 'crusher' check (plant in ('crusher','grizzly'));
+
 alter table public.crusher_shifts   enable row level security;
 alter table public.crusher_taps     enable row level security;
 alter table public.crusher_downtime enable row level security;
@@ -66,7 +72,7 @@ revoke all on public.crusher_taps     from anon, authenticated;
 revoke all on public.crusher_downtime from anon, authenticated;
 
 -- 2. Writing -------------------------------------------------------------------------------
--- p_taps is this device's whole copy of one shift: [{id, logged_at, machine, ore, tonnes}].
+-- p_taps is this device's whole copy of one shift: [{id, plant, logged_at, machine, ore, tonnes}].
 -- Rows are upserted and whatever this device has since deleted is pruned. Both are scoped to the
 -- device, so a replacement pad with an empty log cannot wipe what the real one recorded, and one
 -- device cannot overwrite another's rows.
@@ -99,12 +105,12 @@ begin
         updated_at = now()
   returning s.id into sid;
 
-  insert into public.crusher_taps as t (id, shift_id, logged_at, machine, ore, tonnes, device)
-  select r.id, sid, r.logged_at, r.machine, coalesce(r.ore,''), r.tonnes, dev
+  insert into public.crusher_taps as t (id, shift_id, plant, logged_at, machine, ore, tonnes, device)
+  select r.id, sid, coalesce(r.plant,'crusher'), r.logged_at, r.machine, coalesce(r.ore,''), r.tonnes, dev
     from jsonb_to_recordset(coalesce(p_taps,'[]'::jsonb))
-      as r(id uuid, logged_at timestamptz, machine text, ore text, tonnes numeric)
+      as r(id uuid, plant text, logged_at timestamptz, machine text, ore text, tonnes numeric)
   on conflict (id) do update
-    set shift_id = excluded.shift_id, logged_at = excluded.logged_at, machine = excluded.machine,
+    set shift_id = excluded.shift_id, plant = excluded.plant, logged_at = excluded.logged_at, machine = excluded.machine,
         ore = excluded.ore, tonnes = excluded.tonnes
     where t.device = excluded.device;
 
@@ -117,7 +123,7 @@ begin
 end
 $function$;
 
--- Downtime for one shift: [{id, started_at, ended_at, reason, note, deleted}]. Only the rows sent
+-- Downtime for one shift: [{id, plant, started_at, ended_at, reason, note, deleted}]. Only the rows sent
 -- are touched, so unlike crusher_sync nothing is pruned and a replacement pad can correct a stop
 -- it did not enter. A stop can come before the shift's first tap, so the shift is made if needed.
 create or replace function public.crusher_downtime_sync(p_date date, p_name text, p_device text,
@@ -147,13 +153,13 @@ begin
    using jsonb_array_elements(coalesce(p_rows,'[]'::jsonb)) e
    where d.id = (e->>'id')::uuid and coalesce((e->>'deleted')::boolean,false);
 
-  insert into public.crusher_downtime as d (id, shift_id, started_at, ended_at, reason, note, device)
-  select r.id, sid, r.started_at, r.ended_at, r.reason, coalesce(r.note,''), dev
+  insert into public.crusher_downtime as d (id, shift_id, plant, started_at, ended_at, reason, note, device)
+  select r.id, sid, coalesce(r.plant,'crusher'), r.started_at, r.ended_at, r.reason, coalesce(r.note,''), dev
     from jsonb_to_recordset(coalesce(p_rows,'[]'::jsonb))
-      as r(id uuid, started_at timestamptz, ended_at timestamptz, reason text, note text, deleted boolean)
+      as r(id uuid, plant text, started_at timestamptz, ended_at timestamptz, reason text, note text, deleted boolean)
    where not coalesce(r.deleted,false)
   on conflict (id) do update
-    set shift_id = excluded.shift_id, started_at = excluded.started_at, ended_at = excluded.ended_at,
+    set shift_id = excluded.shift_id, plant = excluded.plant, started_at = excluded.started_at, ended_at = excluded.ended_at,
         reason = excluded.reason, note = excluded.note, device = excluded.device, updated_at = now();
 
   return jsonb_build_object('shift_id', sid);
@@ -173,13 +179,13 @@ as $function$
   select case when not exists (select 1 from s) then jsonb_build_object('shift',null,'taps','[]'::jsonb)
   else jsonb_build_object(
     'shift', (select to_jsonb(s) from s),
-    'taps', coalesce((select jsonb_agg(jsonb_build_object('id',t.id,'logged_at',t.logged_at,'machine',t.machine,
+    'taps', coalesce((select jsonb_agg(jsonb_build_object('id',t.id,'plant',t.plant,'logged_at',t.logged_at,'machine',t.machine,
               'ore',t.ore,'tonnes',t.tonnes,'device',t.device) order by t.logged_at)
             from public.crusher_taps t where t.shift_id = (select id from s)),'[]'::jsonb))
   end;
 $function$;
 
--- One row per shift, newest first, for Previous shifts.
+-- One row per shift and plant that logged anything, newest first, for Previous shifts.
 create or replace function public.crusher_summaries(p_from date default null, p_to date default null, p_limit int default 120)
  returns jsonb
  language sql
@@ -188,7 +194,7 @@ create or replace function public.crusher_summaries(p_from date default null, p_
  set search_path to ''
 as $function$
   select coalesce(jsonb_agg(x order by x.started_at desc),'[]'::jsonb) from (
-    select s.id, s.shift_date, s.shift_name, s.started_at,
+    select s.id, s.shift_date, s.shift_name, s.started_at, p.plant,
       count(t.id) filter (where t.machine='excavator') as in_n,
       coalesce(sum(t.tonnes) filter (where t.machine='excavator'),0) as in_t,
       count(t.id) filter (where t.machine='loader') as loader_n,
@@ -197,12 +203,15 @@ as $function$
       coalesce(sum(t.tonnes) filter (where t.machine='truck'),0) as truck_t,
       max(t.logged_at) as last_tap,
       (select coalesce(sum(extract(epoch from (d.ended_at - d.started_at)) / 60),0)
-         from public.crusher_downtime d where d.shift_id = s.id) as down_min
+         from public.crusher_downtime d where d.shift_id = s.id and d.plant = p.plant) as down_min
     from public.crusher_shifts s
-    left join public.crusher_taps t on t.shift_id = s.id
+    cross join (values ('crusher'),('grizzly')) as p(plant)
+    left join public.crusher_taps t on t.shift_id = s.id and t.plant = p.plant
     where (p_from is null or s.shift_date >= p_from) and (p_to is null or s.shift_date <= p_to)
-    group by s.id
-    order by s.started_at desc
+    group by s.id, p.plant
+    having count(t.id) > 0
+        or exists (select 1 from public.crusher_downtime d where d.shift_id = s.id and d.plant = p.plant)
+    order by s.started_at desc, p.plant
     limit greatest(1, least(coalesce(p_limit,120), 500))
   ) x;
 $function$;
@@ -215,7 +224,7 @@ create or replace function public.crusher_range(p_from date, p_to date)
  security definer
  set search_path to ''
 as $function$
-  select coalesce(jsonb_agg(jsonb_build_object('shift_date',s.shift_date,'shift_name',s.shift_name,
+  select coalesce(jsonb_agg(jsonb_build_object('shift_date',s.shift_date,'shift_name',s.shift_name,'plant',t.plant,
            'logged_at',t.logged_at,'machine',t.machine,'ore',t.ore,'tonnes',t.tonnes,'device',t.device)
            order by t.logged_at),'[]'::jsonb)
     from public.crusher_taps t
@@ -231,7 +240,7 @@ create or replace function public.crusher_downtime_range(p_from date, p_to date)
  security definer
  set search_path to ''
 as $function$
-  select coalesce(jsonb_agg(jsonb_build_object('id',d.id,'shift_date',s.shift_date,'shift_name',s.shift_name,
+  select coalesce(jsonb_agg(jsonb_build_object('id',d.id,'plant',d.plant,'shift_date',s.shift_date,'shift_name',s.shift_name,
            'started_at',d.started_at,'ended_at',d.ended_at,'reason',d.reason,'note',d.note,'device',d.device)
            order by d.started_at),'[]'::jsonb)
     from public.crusher_downtime d
