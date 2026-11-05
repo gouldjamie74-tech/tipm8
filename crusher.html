@@ -21,8 +21,12 @@
   --serif:"Fraunces",Georgia,serif;
   --mark:"Space Grotesk",system-ui,sans-serif;
 }
+/* The whole page takes the plant's colour, so which one is being logged can be seen from across
+   the pad. Not green or red, which already mean logged and downtime. */
+:root[data-theme="crusher"]{--bg:#091A30;--surface:#122C4A;--line:#2A4A70;--muted:#A3B6CC}
+:root[data-theme="grizzly"]{--bg:#2A1038;--surface:#3C1C4F;--line:#5E3A75;--muted:#C2B0D0}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.4;-webkit-text-size-adjust:100%}
+html,body{transition:background-color .2s ease;margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.4;-webkit-text-size-adjust:100%}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none;padding:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
@@ -50,8 +54,8 @@ h2{font-family:var(--serif);font-weight:500;font-size:20px;margin:0 0 10px;lette
 .clock{display:flex;align-items:baseline;gap:12px;margin-top:8px;flex-wrap:wrap}
 .clock .t{font-family:var(--serif);font-size:40px;font-weight:500;font-variation-settings:"opsz" 144;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
 .ore{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:6px;margin-bottom:12px}
-.ore button{min-height:48px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-weight:500;font-size:14px;padding:0 4px;color:var(--muted)}
-.ore button[aria-pressed="true"]{color:var(--ore);border-color:var(--ore);box-shadow:inset 0 0 0 1px var(--ore)}
+.ore button{min-height:48px;border-radius:8px;background:var(--bg);border:1px solid var(--line);font-weight:500;font-size:14px;padding:0 4px;color:var(--muted)}
+.ore button[aria-pressed="true"]{font-weight:600;color:var(--ore);border-color:var(--ore);box-shadow:inset 0 0 0 1px var(--ore)}
 .side-h{font-family:var(--mark);font-weight:700;letter-spacing:.02em;text-transform:uppercase;font-size:12px;color:var(--muted);margin:12px 0 6px}
 .tap{width:100%;min-height:112px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px;transition:transform .08s ease,background .15s ease;text-align:center}
 .tap:active{transform:scale(.985)}
@@ -555,7 +559,10 @@ function stats(v){
 }
 
 /* ---- Rendering ---- */
+const PLANT_BG={crusher:'#091A30',grizzly:'#2A1038'};
 function renderPlants(){
+  document.documentElement.dataset.theme=S.plant;
+  $('meta[name="theme-color"]').setAttribute('content',PLANT_BG[S.plant]);
   $('#plantSel').innerHTML=PKEYS.map(p=>{const st=stats(view(p));
     return `<button type="button" data-plant="${p}" aria-pressed="${S.plant===p}"><b>${PLANTS[p].label}</b>`
       +`<span>${fmtT(st.inT)} t in · ${fmtT(st.outT)} t out${st.down>0?' · '+fmtMin(st.down)+' down':''}</span></button>`}).join('');
@@ -993,6 +1000,7 @@ window.addEventListener('scroll',hideTip,{passive:true});
 window.addEventListener('online',()=>{drain();drainDown();pull()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){rollShift();pull();renderAll()}});
 
+document.documentElement.dataset.theme=S.plant;
 document.body.dataset.role=role;
 rollShift();
 renderAll();

@@ -167,7 +167,8 @@ A row in the tap log can be corrected if the two sides were on different ore at 
 **Pick the plant first.** Two large buttons under the shift clock choose Mobile crusher or Grizzly,
 and each shows that plant's tonnes in, tonnes out and downtime so both can be read at a glance. Every
 tap and stop records the plant, and everything else on the screen is the plant picked. Undo only
-touches the plant showing, and a tap on the wrong plant is moved by correcting its row. The plants are
+touches the plant showing, and a tap on the wrong plant is moved by correcting its row. The whole page background follows the plant, deep blue for the crusher and deep plum for the
+grizzly, so which one is being logged can be seen at a distance. The plants are
 separate streams, nothing passes through both, so once both have logged a line under the picker gives
 their combined tonnes. Everything else stays per plant. The `crusher_` names in the database cover both plants.
 
