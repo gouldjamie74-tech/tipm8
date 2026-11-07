@@ -344,14 +344,15 @@ const sideOf=m=>(MACHINES[m]||{}).side;
 /* The site's old delay list with Grizzly, Excavator down and No feed added. */
 const REASONS=['Crusher','Grizzly','Screen','Excavator down','Loader down','No trucks','No feed','Blast','Weather','Shift change','Meal','Other'];
 
-/* Site defaults (Jamie, 7 Nov 2026): a new device or a blank field starts from these, and the
+/* Site defaults (Jamie, 7 Nov 2026; excavator revised the same day): a new device or a blank field starts from these, and the
    operator changes them only when the fleet does. */
-const DEFAULTS={excavator:{cap:1.8,fill:1},loader:{cap:12,fill:1},truck:{cap:30,fill:0.8}};
+const DEFAULTS={excavator:{cap:3,fill:0.9},loader:{cap:12,fill:1},truck:{cap:30,fill:0.8}};
 const blankMachines=()=>JSON.parse(JSON.stringify(DEFAULTS));
 const allMachines=()=>({crusher:blankMachines(),grizzly:blankMachines()});
 /* Bumped when the defaults must replace what devices hold. Rev 2: every machine had been set to
-   1 t x 1.5 on the crusher pad, so each tap logged 1.5 t. */
-const MREV=2;
+   1 t x 1.5 on the crusher pad, so each tap logged 1.5 t. Rev 3: excavator 1.8 t x 1 to 3 t x 0.9
+   (1.8 m3 bucket at about 1.7 t/m3 loose), until a clean hour of taps lets it be back-calculated. */
+const MREV=3;
 const fillIn=(set)=>Object.fromEntries(MKEYS.map(m=>{const c=(set||{})[m]||{},d=DEFAULTS[m];
   return[m,{cap:c.cap>0?c.cap:d.cap,fill:c.fill>0?c.fill:d.fill}]}));
 /* Before the grizzly, settings were one set per machine, and everything logged was the crusher. */
