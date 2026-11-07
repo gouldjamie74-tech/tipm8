@@ -344,15 +344,21 @@ const sideOf=m=>(MACHINES[m]||{}).side;
 /* The site's old delay list with Grizzly, Excavator down and No feed added. */
 const REASONS=['Crusher','Grizzly','Screen','Excavator down','Loader down','No trucks','No feed','Blast','Weather','Shift change','Meal','Other'];
 
-/* Capacities start blank rather than at a guess: a made-up bucket size would produce tonnes that
-   look real. A machine's button stays off until its capacity and fill are entered. */
-const blankMachines=()=>({excavator:{cap:null,fill:null},loader:{cap:null,fill:null},truck:{cap:null,fill:null}});
+/* Site defaults (Jamie, 7 Nov 2026): a new device or a blank field starts from these, and the
+   operator changes them only when the fleet does. */
+const DEFAULTS={excavator:{cap:1.8,fill:1},loader:{cap:12,fill:1},truck:{cap:30,fill:0.8}};
+const blankMachines=()=>JSON.parse(JSON.stringify(DEFAULTS));
 const allMachines=()=>({crusher:blankMachines(),grizzly:blankMachines()});
+/* Bumped when the defaults must replace what devices hold. Rev 2: every machine had been set to
+   1 t x 1.5 on the crusher pad, so each tap logged 1.5 t. */
+const MREV=2;
+const fillIn=(set)=>Object.fromEntries(MKEYS.map(m=>{const c=(set||{})[m]||{},d=DEFAULTS[m];
+  return[m,{cap:c.cap>0?c.cap:d.cap,fill:c.fill>0?c.fill:d.fill}]}));
 /* Before the grizzly, settings were one set per machine, and everything logged was the crusher. */
 const loadMachines=m=>{
   const out=allMachines();
-  if(m&&m.excavator)out.crusher={...out.crusher,...m};
-  else if(m)PKEYS.forEach(p=>{out[p]={...out[p],...(m[p]||{})}});
+  if(m&&m.excavator)out.crusher=fillIn(m);
+  else if(m)PKEYS.forEach(p=>{out[p]=fillIn(m[p])});
   return out;
 };
 const withPlant=r=>({p:'crusher',...r});
@@ -362,8 +368,16 @@ let S=(()=>{
   try{const o=JSON.parse(store.get(KEY)||'null');
     if(o)return{shift:{...d.shift,...(o.shift||{})},machines:loadMachines(o.machines),plant:PLANTS[o.plant]?o.plant:d.plant,
       ore:ORES.some(x=>x.k===o.ore)?o.ore:d.ore,taps:(o.taps||[]).map(withPlant),outbox:o.outbox||{},down:(o.down||[]).map(withPlant),
-      downOut:Object.fromEntries(Object.entries(o.downOut||{}).map(([k,v])=>[k,withPlant(v)]))}}catch(e){}
-  return d})();
+      downOut:Object.fromEntries(Object.entries(o.downOut||{}).map(([k,v])=>[k,withPlant(v)])),mrev:o.mrev||1}}catch(e){}
+  return{...d,mrev:MREV}})();
+/* One-off reset to the defaults. A tap this device logged at the old setting's figure is re-worked
+   at the new one and goes up with the next sync; a tap someone corrected by hand is left alone. */
+if(S.mrev<MREV){
+  const old=S.machines;S.machines=allMachines();
+  const t1=(c)=>c&&c.cap>0&&c.fill>0?Math.round(c.cap*c.fill*100)/100:null;
+  S.taps.forEach(t=>{const o=t1((old[t.p]||{})[t.m]);if(o!=null&&t.tonnes===o){const n=t1(S.machines[t.p][t.m]);if(n!=null)t.tonnes=n}});
+  S.mrev=MREV;var migrated=true;
+}
 const persist=()=>store.set(KEY,JSON.stringify(S));
 
 /* ---- Site time: the same rules as index.html. Nothing here reads the device's own zone. ---- */
@@ -1019,6 +1033,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden){rollShift
 document.documentElement.dataset.theme=S.plant;
 document.body.dataset.role=role;
 rollShift();
+if(typeof migrated!=='undefined'){persist();if(logging())save()}
 renderAll();
 pull();startPolling();
 if(Object.keys(S.outbox).length)schedulePush(500);
