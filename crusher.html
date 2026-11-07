@@ -71,6 +71,8 @@ h2{font-family:var(--serif);font-weight:500;font-size:20px;margin:0 0 10px;lette
 .link{color:var(--blue);text-decoration:underline;text-underline-offset:3px;min-height:44px;padding:0 4px}
 .link:disabled{opacity:.35;cursor:not-allowed}
 .note{color:var(--muted);font-size:13px;margin-top:8px}
+.note.warn{color:var(--amber)}
+.note.warn:empty{display:none}
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:16px 18px}
 .stat{min-width:0}
 .stat .v{font-family:var(--serif);font-weight:500;font-size:28px;font-variation-settings:"opsz" 144;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.05}
@@ -207,7 +209,8 @@ body[data-role="viewer"] .writer{display:none}
   <section>
     <h2 id="setHead">Tonnes per tap</h2>
     <div id="mSet"></div>
-    <div class="note">Capacity in tonnes × fill factor. A change applies to the next tap. Taps already logged keep their tonnes.</div>
+    <div class="note warn" id="mErr" role="alert"></div>
+    <div class="note">Capacity in tonnes × fill factor (0.9, not 90). A change applies to the next tap. Taps already logged keep their tonnes.</div>
   </section>
 
 </div>
@@ -428,6 +431,10 @@ let pushTimer=null, pushing=false, lastPush=null, lastPull=null, syncErr=null, d
 const num=v=>{const n=parseFloat(v);return isFinite(n)?n:null};
 const ready=(m,p=S.plant)=>{const c=S.machines[p][m];return !!c&&c.cap>0&&c.fill>0};
 const perTap=(m,p=S.plant)=>ready(m,p)?Math.round(S.machines[p][m].cap*S.machines[p][m].fill*100)/100:null;
+/* A capacity this low is a typo, not a machine on this site (7 Nov 2026: 1 t × 1.5 on every machine). */
+const MIN_CAP={truck:5,excavator:0.5,loader:0.5};
+const plausible=(p=S.plant)=>MKEYS.filter(m=>{const c=S.machines[p][m];return c&&c.cap>0&&c.cap<MIN_CAP[m]})
+  .map(m=>`${MACHINES[m].short} capacity ${S.machines[p][m].cap} t looks low. Check it is the ${MACHINES[m].per==='load'?'truck payload':'bucket'} in tonnes.`).join(' ');
 function snapshot(){
   const machines={};PKEYS.forEach(p=>MKEYS.forEach(m=>{if(ready(m,p))machines[p+':'+m]=S.machines[p][m]}));
   return{p_date:S.shift.key.date,p_name:S.shift.key.name,p_device:deviceName(),p_started_at:iso(S.shift.startedAt),
@@ -594,6 +601,7 @@ function renderTaps(){
 }
 function renderSettings(){
   const box=$('#mSet'), active=document.activeElement;
+  if(logging()&&!$('#mErr').textContent.includes('Not saved'))$('#mErr').textContent=plausible();
   if(box.contains(active)&&active.tagName==='INPUT'){ /* never rebuild a field someone is typing in */
     MKEYS.forEach(m=>{const e=$('#per-'+m);if(e)e.textContent=ready(m)?perTap(m).toFixed(1)+' t':'—'});return}
   const src=m=>logging()?S.machines[S.plant][m]:(remote.machines[S.plant+':'+m]||{cap:null,fill:null});
@@ -948,10 +956,18 @@ $('#roleChips').addEventListener('click',e=>{const b=e.target.closest('[data-rol
 $('#oreSel').addEventListener('click',e=>{const b=e.target.closest('[data-ore]');if(!b)return;S.ore=b.dataset.ore;persist();renderOre();renderTaps()});
 $('#mSet').addEventListener('change',e=>{
   const i=e.target.closest('input[data-m]');if(!i||!logging())return;
-  const m=i.dataset.m,f=i.dataset.f,v=num(i.value),[lo,hi]=f==='cap'?[0.1,500]:[0.1,1.5];
-  const set=S.machines[S.plant];
-  set[m]={...set[m],[f]:v==null?null:Math.max(lo,Math.min(hi,v))};
+  const m=i.dataset.m,f=i.dataset.f,[lo,hi]=f==='cap'?[0.1,500]:[0.1,1.5];
+  let v=num(i.value);
+  /* A fill typed as a percent (90) reads as 0.9. Anything else out of range is refused and said so:
+     it used to be cut to the limit without a word, and a fill of 90 logged every tap at 1.5 t. */
+  if(f==='fill'&&v!=null&&v>hi&&v<=150)v=Math.round(v)/100;
+  const set=S.machines[S.plant], name=MACHINES[m].short;
+  if(v!=null&&(v<lo||v>hi)){
+    $('#mErr').textContent=`${name} ${f==='cap'?'capacity':'fill'} ${i.value} is out of range (${lo} to ${hi}${f==='cap'?' t':''}). Not saved.`;
+    i.value=set[m][f]==null?'':set[m][f];return}
+  set[m]={...set[m],[f]:v};
   i.value=set[m][f]==null?'':set[m][f];i.classList.toggle('need',!(set[m][f]>0));
+  $('#mErr').textContent=plausible();
   save();renderTaps();renderSettings();
 });
 $('#mSet').addEventListener('focusout',()=>setTimeout(()=>{if(!$('#mSet').contains(document.activeElement))renderSettings()},0));
