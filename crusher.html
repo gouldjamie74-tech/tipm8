@@ -253,7 +253,7 @@ body[data-role="viewer"] .writer{display:none}
       <thead><tr><th>#</th><th>Time</th><th>Side</th><th>Machine</th><th>Ore</th><th class="r">t</th></tr></thead>
       <tbody id="logBody"></tbody>
     </table></div>
-    <div class="note writer">Tap a row to correct its plant, time, machine, ore or tonnes.</div>
+    <div class="note writer">Tap a row to correct it. Logged In instead of Out? Pick the right machine and the tonnes follow.</div>
   </section>
 
   <section>
@@ -866,15 +866,19 @@ const modalOpen=()=>!$('#editModal').hidden;
 const plantPicks=(sel,attr)=>PKEYS.map(p=>`<button type="button" ${attr}="${p}" aria-pressed="${sel===p}">${PLANTS[p].label}</button>`).join('');
 function renderEditPicks(){
   $('#ePlant').innerHTML=plantPicks(editP,'data-ep');
-  $('#eMachine').innerHTML=MKEYS.map(m=>`<button type="button" data-em="${m}" aria-pressed="${editM===m}">${MACHINES[m].short}</button>`).join('');
+  $('#eMachine').innerHTML=MKEYS.map(m=>`<button type="button" data-em="${m}" aria-pressed="${editM===m}">${MACHINES[m].short} · ${sideOf(m)==='in'?'In':'Out'}</button>`).join('');
   $('#eOre').innerHTML=ORES.map(o=>`<button type="button" data-eore="${o.k}" style="--ore:${o.c}" aria-pressed="${editOre===o.k}">${o.k}</button>`).join('');
 }
 function openEdit(id){
   const t=S.taps.find(x=>x.id===id);if(!t)return;
-  editId=id;editOre=t.ore;editM=t.m;editP=t.p;
+  editId=id;editOre=t.ore;editM=t.m;editP=t.p;eTyped=false;
   $('#eTime').value=fmtTime(t.t);$('#eTonnes').value=t.tonnes;
   renderEditPicks();$('#editModal').hidden=false;
 }
+/* A tap logged on the wrong button (In for Out) takes the right machine's tonnes, unless the
+   tonnes have been typed in this edit. */
+let eTyped=false;
+function retonne(){if(eTyped)return;const t=perTap(editM,editP);if(t!=null)$('#eTonnes').value=t}
 function closeEdit(){$('#editModal').hidden=true;editId=null}
 function saveEdit(){
   const t=S.taps.find(x=>x.id===editId);if(!t)return closeEdit();
@@ -964,7 +968,7 @@ function deleteDown(){
 /* ---- Wiring ---- */
 MKEYS.forEach(m=>$('#tap-'+m).addEventListener('click',()=>tap(m)));
 $('#plantSel').addEventListener('click',e=>{const b=e.target.closest('[data-plant]');if(!b)return;S.plant=b.dataset.plant;persist();renderAll()});
-$('#ePlant').addEventListener('click',e=>{const b=e.target.closest('[data-ep]');if(b){editP=b.dataset.ep;renderEditPicks()}});
+$('#ePlant').addEventListener('click',e=>{const b=e.target.closest('[data-ep]');if(b){editP=b.dataset.ep;retonne();renderEditPicks()}});
 $('#dPlant').addEventListener('click',e=>{const b=e.target.closest('[data-dp]');if(b){downPlant=b.dataset.dp;renderDownReasons();$('#dErr').textContent='';previewDown()}});
 $('#undoBtn').addEventListener('click',undo);
 $('#roleChips').addEventListener('click',e=>{const b=e.target.closest('[data-role]');if(b)setRole(b.dataset.role)});
@@ -1004,7 +1008,8 @@ $('#downModal').addEventListener('click',e=>{if(e.target===$('#downModal'))close
 $('#eSave').addEventListener('click',saveEdit);
 $('#eCancel').addEventListener('click',closeEdit);
 $('#eDel').addEventListener('click',delEdit);
-$('#eMachine').addEventListener('click',e=>{const b=e.target.closest('[data-em]');if(b){editM=b.dataset.em;renderEditPicks()}});
+$('#eMachine').addEventListener('click',e=>{const b=e.target.closest('[data-em]');if(b){editM=b.dataset.em;retonne();renderEditPicks()}});
+$('#eTonnes').addEventListener('input',()=>{eTyped=true});
 $('#eOre').addEventListener('click',e=>{const b=e.target.closest('[data-eore]');if(b){editOre=b.dataset.eore;renderEditPicks()}});
 $('#editModal').addEventListener('click',e=>{if(e.target===$('#editModal'))closeEdit()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(modalOpen())closeEdit();if(downOpen())closeDown()}});
