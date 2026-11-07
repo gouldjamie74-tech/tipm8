@@ -1045,7 +1045,19 @@ pull();startPolling();
 if(Object.keys(S.outbox).length)schedulePush(500);
 if(Object.keys(S.downOut).length)scheduleDown(700);
 if(/[?&]mode=log\b/.test(location.search)&&!logging())setTimeout(()=>setRole('logger'),0);
-if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+/* A pad left open all shift never reloads, so a fix deployed mid-shift never reached it (7 Nov 2026:
+   it kept logging 1.5 t). It now checks for a new version every few minutes and when woken, and
+   reloads itself once the new one takes over. Everything is in local storage, so nothing is lost;
+   it waits while an edit or downtime box is open. */
+if('serviceWorker'in navigator&&location.protocol.startsWith('http')){
+  const had=!!navigator.serviceWorker.controller;let fresh=false;
+  navigator.serviceWorker.register('sw.js').then(reg=>{
+    setInterval(()=>reg.update().catch(()=>{}),5*60000);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)reg.update().catch(()=>{})});
+  }).catch(()=>{});
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had)fresh=true});
+  setInterval(()=>{if(fresh&&[...document.querySelectorAll('.modal')].every(m=>m.hidden)){fresh=false;persist();location.reload()}},1000);
+}
 let lastChart=0;
 setInterval(()=>{if(rollShift())renderAll();renderClock();renderSync();if(now()-lastChart>60000){lastChart=now();renderStats();renderCharts()}},1000);
 })();
